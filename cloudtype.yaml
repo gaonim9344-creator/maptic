@@ -1,0 +1,13 @@
+version: "2.0"
+services:
+  maptic:
+    name: maptic
+    type: docker
+    context: ./
+    dockerfile: Dockerfile
+    port: 8080
+    env:
+      - MONGODB_URI
+      - JWT_SECRET
+      - NAVER_MAPS_CLIENT_ID
+      - NODE_ENV=production

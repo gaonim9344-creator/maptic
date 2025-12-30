@@ -1,0 +1,529 @@
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { getSportEmoji, SPORTS_LIST } from '../utils/sportsData';
+import { searchAPI } from '../utils/api';
+import './Home.css';
+
+function Home({ user }) {
+    const mapRef = useRef(null);
+    const naverMapRef = useRef(null);
+    const markersRef = useRef([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [userLocation, setUserLocation] = useState(null);
+    const [mapLoaded, setMapLoaded] = useState(false);
+    const [searchError, setSearchError] = useState(null);
+    const [currentRegion, setCurrentRegion] = useState({ area1: '서울', area2: '', area3: '' }); // Default to Seoul
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        const loadNaverScript = () => {
+            return new Promise((resolve, reject) => {
+                if (window.naver && window.naver.maps) {
+                    resolve(window.naver.maps);
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=qk5p9qijo2&submodules=geocoder`;
+                script.async = true;
+                script.onload = () => {
+                    // Wait for the geocoder submodule if requested via submodules param
+                    window.naver.maps.onJSContentLoaded = () => resolve(window.naver.maps);
+                    // Fallback if the event doesn't fire or for different versions
+                    setTimeout(() => resolve(window.naver.maps), 500);
+                };
+                script.onerror = (err) => reject(new Error('네이버 지도 스크립트 로드 실패'));
+                document.head.appendChild(script);
+            });
+        };
+
+        const init = async () => {
+            try {
+                // 1. Load Script
+                await loadNaverScript();
+
+                // 2. Get Location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+                            setUserLocation(location);
+                            initializeMap(location);
+                        },
+                        () => {
+                            const defaultLoc = { lat: 37.5665, lng: 126.9780 };
+                            setUserLocation(defaultLoc);
+                            initializeMap(defaultLoc);
+                        }
+                    );
+                } else {
+                    const defaultLoc = { lat: 37.5665, lng: 126.9780 };
+                    setUserLocation(defaultLoc);
+                    initializeMap(defaultLoc);
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+                setSearchError('지도를 불러오는데 실패했습니다. 네트워크 상태를 확인해주세요.');
+            }
+        };
+
+        init();
+
+        return () => {
+            markersRef.current.forEach(marker => marker.setMap(null));
+        };
+    }, []);
+
+    // Get current region name for better search results
+    useEffect(() => {
+        if (userLocation && window.naver?.maps?.Service) {
+            window.naver.maps.Service.reverseGeocode({
+                coords: new window.naver.maps.LatLng(userLocation.lat, userLocation.lng),
+            }, (status, response) => {
+                if (status === window.naver.maps.Service.Status.OK) {
+                    const items = response.v2.results;
+                    if (items.length > 0) {
+                        const region = items[0].region;
+                        // Use a more specific region if available (city + district)
+                        setCurrentRegion({
+                            area1: region.area1.name,
+                            area2: region.area2.name,
+                            area3: region.area3.name
+                        });
+                    }
+                }
+            });
+        }
+    }, [userLocation]);
+
+    const initializeMap = (location) => {
+        const mapOptions = {
+            center: new window.naver.maps.LatLng(location.lat, location.lng),
+            zoom: 14, // Slightly closer than example but standard for facilities
+            zoomControl: true
+        };
+
+        const map = new window.naver.maps.Map(mapRef.current, mapOptions);
+        naverMapRef.current = map;
+
+        // Add user location marker
+        new window.naver.maps.Marker({
+            position: new window.naver.maps.LatLng(location.lat, location.lng),
+            map: map,
+            title: '현재 위치',
+            icon: {
+                content: '<div style="background: #4299e1; color: white; padding: 8px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">📍 내 위치</div>',
+                anchor: new window.naver.maps.Point(50, 50)
+            }
+        });
+
+        setMapLoaded(true);
+
+        // Load initial markers will be done by the useEffect below
+    };
+
+    // Re-load facilities when user profile interests change (but not on region update to avoid excessive API calls)
+    useEffect(() => {
+        if (mapLoaded && userLocation) {
+            console.log('🔄 Reloading facilities due to dependency change');
+            loadFacilities(userLocation, user?.selectedSports);
+        }
+    }, [user?.selectedSports, mapLoaded, userLocation]);
+
+    // Load facilities based on user preferences or search
+    const loadFacilities = async (location, selectedSports = null) => {
+        // Clear existing markers
+        markersRef.current.forEach(marker => marker.setMap(null));
+        markersRef.current = [];
+        setIsSearching(true);
+        setSearchError(null);
+
+        if (!selectedSports || selectedSports.length === 0) {
+            // Default to popular sports for better initial results
+            selectedSports = ['축구', '농구', '수영', '헬스', '요가', '필라테스', '태권도', '유도'];
+        }
+
+        console.log('🔍 Starting facility search with sports:', selectedSports);
+        console.log('📍 Search location:', location);
+
+        // Helper to expand keyword into realistic search terms
+        const getExpandedKeywords = (sport) => {
+            const s = sport.replace(/장$/g, '').replace(/교실$/g, '').trim();
+            // Pruned for speed: Using just the base keyword is much faster and Naver handles variations well.
+            if (s === '축구') return ['축구', '풋살'];
+            if (s === '유도') return ['유도관', '유도'];
+            if (s === '태권도') return ['태권도장', '태권도'];
+            if (s === '복싱') return ['복싱'];
+            return [s, `${s}도장`, `${s}체육관`]; // Better default fallbacks
+        };
+
+        try {
+            const allResults = [];
+
+            // 1. Fetch all sports SEQUENTIALLY to avoid hitting API QPS limits (10 req/sec)
+            for (const sport of selectedSports) {
+                const keywords = getExpandedKeywords(sport);
+
+                for (const keyword of keywords) {
+                    try {
+                        const queries = [];
+                        // Dual-scope search: 1. District (Precision), 2. City (Border/Broad)
+                        // Removed Dong-level search to reduce API calls (Rate Limit prevention)
+                        if (typeof currentRegion === 'object' && currentRegion.area1) {
+                            // 1. District level
+                            if (currentRegion.area2) {
+                                queries.push(`${currentRegion.area1} ${currentRegion.area2} ${keyword}`);
+                            }
+                            // 2. City level
+                            queries.push(`${currentRegion.area1} ${keyword}`);
+                        } else {
+                            queries.push(currentRegion ? `${currentRegion} ${keyword}` : keyword);
+                        }
+
+                        // Deduplicate queries
+                        const uniqueQueries = [...new Set(queries)];
+
+                        for (const fullQuery of uniqueQueries) {
+                            let start = 1;
+                            let hasMore = true;
+                            // Fetch up to 300 results (Reduced from 500 for stability)
+                            const MAX_PER_QUERY = 300;
+
+                            while (hasMore && start <= MAX_PER_QUERY) {
+                                console.log(`Searching: ${fullQuery} (Start: ${start})`);
+
+                                try {
+                                    // Pass start index to pagination
+                                    const response = await searchAPI.searchLocal(fullQuery, location.lat, location.lng, start);
+                                    const items = response.data.items || [];
+
+                                    if (items.length > 0) {
+                                        const taggedItems = items.map(item => ({ ...item, sport }));
+                                        allResults.push(...taggedItems);
+
+                                        start += items.length;
+
+                                        // If we got fewer than requested (usually 5 or 100), end
+                                        if (items.length < 5) hasMore = false;
+                                    } else {
+                                        hasMore = false;
+                                    }
+                                } catch (innerErr) {
+                                    console.warn(`Query skipped due to error: ${innerErr.message}`);
+                                    hasMore = false; // Stop this query variation
+                                }
+
+                                // Increased delay to 500ms to avoid 'Rate limit exceeded' (012)
+                                await new Promise(r => setTimeout(r, 500));
+                            }
+                        }
+
+                    } catch (e) {
+                        console.error(`API fail for ${keyword}:`, e.message);
+                        // Don't throw here, just continue to next keyword/sport
+                        if (e.response?.status === 401 || e.response?.status === 403) {
+                            throw e;
+                        }
+                    }
+                }
+            }
+
+            console.log('📊 Total search results:', allResults.length);
+
+            if (allResults.length === 0) {
+                console.error('❌ No facilities found');
+                setSearchError(`주변 50km 이내에서 스포츠 시설을 찾을 수 없습니다. 다른 지역을 검색해보세요.`);
+                return;
+            }
+
+            // 2. Deduplicate all results
+            const uniqueItems = allResults.filter((item, index, self) =>
+                index === self.findIndex((t) => t.address === item.address)
+            );
+
+            // 3. Geocode and Create markers for ALL items
+            const bounds = new window.naver.maps.LatLngBounds();
+            let markerCount = 0;
+
+            // Haversine formula to calculate distance between two points
+            const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+                const R = 6371; // Radius of the earth in km
+                const dLat = deg2rad(lat2 - lat1);
+                const dLon = deg2rad(lon2 - lon1);
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const d = R * c; // Distance in km
+                return d;
+            };
+
+            const deg2rad = (deg) => {
+                return deg * (Math.PI / 180);
+            };
+
+            // Collection array for sorting
+            const validFacilities = [];
+            console.log(`🔍 Processing ${uniqueItems.length} unique items. First 3 items:`, uniqueItems.slice(0,3).map(i => ({title: i.title, mapx: i.mapx, mapy: i.mapy, address: i.address})));
+
+            await Promise.all(uniqueItems.map(async (item) => {
+                let latlng = null;
+                try {
+                    // 1. Prioritize TM128 coordinates from API (Fastest & Most Accurate for Sorting)
+                    if (item.mapx && item.mapy) {
+                        const x = parseInt(item.mapx, 10);
+                        const y = parseInt(item.mapy, 10);
+                        if (!isNaN(x) && !isNaN(y) && x > 0 && y > 0) {
+                            const point = new window.naver.maps.Point(x, y);
+                            latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(point);
+                        }
+                    }
+
+                    // 2. Fallback: Geocode address if coordinates missing
+                    if (!latlng && item.address) {
+                        const geocodeRes = await new Promise((resolve) => {
+                            window.naver.maps.Service.geocode({ query: item.address }, (status, response) => {
+                                if (status === window.naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
+                                    const addr = response.v2.addresses[0];
+                                    resolve(new window.naver.maps.LatLng(addr.y, addr.x));
+                                } else {
+                                    resolve(null);
+                                }
+                            });
+                        });
+                        if (geocodeRes) latlng = geocodeRes;
+                    }
+                } catch (e) {
+                    console.warn('Coordinate conversion failed:', e);
+                }
+
+                if (latlng) {
+                    // Filter by distance (5km)
+                    if (!latlng) console.warn(`❌ Failed to convert coords for:`, item.title, `mapx:${item.mapx}, mapy:${item.mapy}`);
+                    const targetLat = typeof latlng.lat === 'function' ? latlng.lat() : latlng.y;
+                    const targetLng = typeof latlng.lng === 'function' ? latlng.lng() : latlng.x;
+
+                    const distance = getDistanceFromLatLonInKm(
+                        location.lat, location.lng,
+                        targetLat, targetLng
+                    );
+
+                    if (distance <= 50) { // Safety cap of 50km just in case
+                        validFacilities.push({ ...item, latlng, distance });
+                    }
+                }
+                    const distance = getDistanceFromLatLonInKm(location.lat, location.lng, targetLat, targetLng);
+                    if (distance > 50) console.log(`📏 Filtered:`, item.title.replace(/<[^>]*>/g, ""), `distance: ${distance.toFixed(2)}km`);
+                    else if (validFacilities.length < 5) console.log(`✅ Valid facility:`, item.title.replace(/<[^>]*>/g, ""), `distance: ${distance.toFixed(2)}km`);
+            }));
+
+            // Sort by distance (closest first) and take top 5
+            validFacilities.sort((a, b) => a.distance - b.distance);
+            const top5 = validFacilities.slice(0, 5);
+
+            console.log(`✅ Found ${validFacilities.length} valid facilities within range`);
+            console.log('🎯 Displaying top 5 closest facilities:', top5.map(f => ({ name: f.title.replace(/<[^>]*>?/gm, ''), distance: f.distance.toFixed(2) + 'km', sport: f.sport })));
+
+            top5.forEach(facility => {
+                const emoji = getSportEmoji(facility.sport);
+                createMarker(facility.latlng, emoji, facility, facility.sport);
+                bounds.extend(facility.latlng);
+                markerCount++;
+            });
+
+            console.log(`🗺️ Created ${markerCount} markers on the map`);
+
+            // 4. Fit map to show all markers
+            if (markerCount > 0 && naverMapRef.current) {
+                naverMapRef.current.fitBounds(bounds, {
+                    top: 50, bottom: 50, left: 20, right: 20
+                });
+            }
+
+        } catch (error) {
+            console.error('Failed to load facilities:', error);
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                const guidance = error.response?.data?.guidance;
+                setSearchError(guidance ? `서비스 인증 실패: ${guidance}` : `인증 오류가 발생했습니다.`);
+            } else {
+                setSearchError(`시설을 불러오는 중 오류가 발생했습니다.`);
+            }
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const createMarker = (latlng, emoji, item, sport) => {
+        // Generate a consistent pastel color string from a string
+        const stringToColor = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return '#' + '00000'.substring(0, 6 - c.length) + c;
+        };
+
+        // Define some nice colors for common sports
+        const sportColors = {
+            '축구': '#e53e3e', // Red
+            '농구': '#dd6b20', // Orange
+            '유도': '#3182ce', // Blue
+            '태권도': '#38a169', // Green
+            '수영': '#0bc5ea', // Cyan
+            '복싱': '#d53f8c', // Pink
+            '주짓수': '#805ad5', // Purple
+        };
+
+        const markerColor = sportColors[sport] || stringToColor(sport);
+
+        const marker = new window.naver.maps.Marker({
+            position: latlng,
+            map: naverMapRef.current,
+            title: item.title.replace(/<[^>]*>?/gm, ''),
+            icon: {
+                content: `
+                    <div class="custom-marker" style="
+                        position: relative;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        width: 44px;
+                        height: 44px;
+                        background: white;
+                        border-radius: 50%;
+                        border: 3px solid ${markerColor};
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                        cursor: pointer;
+                        transition: transform 0.2s;
+                    ">
+                        <div style="font-size: 24px; line-height: 1;">${emoji}</div>
+                        <div style="
+                            position: absolute;
+                            bottom: -5px;
+                            background: ${markerColor};
+                            color: white;
+                            font-size: 10px;
+                            padding: 2px 6px;
+                            border-radius: 10px;
+                            font-weight: bold;
+                            white-space: nowrap;
+                        ">${sport}</div>
+                    </div>
+                `,
+                anchor: new window.naver.maps.Point(22, 22)
+            }
+        });
+
+        const infoWindow = new window.naver.maps.InfoWindow({
+            content: `
+                <div style="padding: 15px; background: #1a202c; color: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); min-width: 250px; border: 1px solid rgba(255,255,255,0.1);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 1.15rem; color: #4299e1; font-weight: 800;">${item.title.replace(/<[^>]*>?/gm, '')}</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <p style="margin: 0; font-size: 0.95rem; color: #e2e8f0; display: flex; align-items: center; gap: 5px;">
+                            <span style="color: #4299e1;">${emoji}</span> <strong>종목:</strong> ${sport}
+                        </p>
+                        <p style="margin: 0; font-size: 0.9rem; color: #cbd5e0; line-height: 1.4;">
+                            <span style="color: #4299e1;">📍</span> <strong>위치:</strong> ${item.address}
+                        </p>
+                    </div>
+                    <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(item.title.replace(/<[^>]*>?/gm, ''))}" target="_blank" style="display: inline-block; margin-top: 15px; background: #4299e1; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600; text-align: center; transition: background 0.2s;">상세보기 (네이버 검색)</a>
+                </div>
+            `,
+            backgroundColor: "transparent",
+            borderWidth: 0,
+            disableAnchor: true
+        });
+
+        window.naver.maps.Event.addListener(marker, 'click', () => {
+            infoWindow.open(naverMapRef.current, marker);
+            naverMapRef.current.panTo(latlng, { duration: 500 });
+        });
+
+        markersRef.current.push(marker);
+    };
+
+    // Removed generateMockFacilities as we are now using real data
+
+    // Handle search
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (!searchQuery.trim() || !userLocation) return;
+
+        // Search for specific facilities
+        const searchResults = SPORTS_LIST.filter(sport =>
+            sport.name.includes(searchQuery) ||
+            sport.keywords.some(k => k.includes(searchQuery.toLowerCase()))
+        );
+
+        if (searchResults.length > 0) {
+            const sportsNames = searchResults.map(s => s.name);
+            loadFacilities(userLocation, sportsNames);
+        } else {
+            // Generic search - add " 근처" to make it more like a real place search
+            loadFacilities(userLocation, [searchQuery]);
+        }
+    };
+
+    return (
+        <div className="home-page">
+            {/* Fullscreen Map */}
+            <div ref={mapRef} className="map-fullscreen">
+                {(searchError || isSearching) && (
+                    <div className="search-error-overlay glass-container">
+                        {isSearching ? (
+                            <div className="flex items-center gap-md">
+                                <div className="spinner-small"></div>
+                                <span>주변 시설을 찾는 중...</span>
+                            </div>
+                        ) : (
+                            <p>{searchError}</p>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Floating Search Bar */}
+            <div className="search-floating glass-container fade-in">
+                <form onSubmit={handleSearch} className="search-form">
+                    <input
+                        type="text"
+                        id="search-input-home"
+                        name="searchQuery"
+                        className="search-input-home"
+                        placeholder={
+                            user?.selectedSports?.length > 0
+                                ? `근처 ${user.selectedSports[0]} 검색...`
+                                : "근처 스포츠 시설 검색..."
+                        }
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <button type="submit" className="btn btn-primary search-btn">
+                        찾기
+                    </button>
+                </form>
+            </div>
+
+            <button
+                className="my-location-btn glass-container"
+                onClick={() => userLocation && naverMapRef.current.panTo(new window.naver.maps.LatLng(userLocation.lat, userLocation.lng))}
+                title="내 위치로 이동"
+            >
+                🎯
+            </button>
+
+            {
+                !mapLoaded && (
+                    <div className="map-loading">
+                        <div className="spinner"></div>
+                        <p>지도를 불러오는 중...</p>
+                    </div>
+                )
+            }
+        </div >
+    );
+}
+
+export default Home;
