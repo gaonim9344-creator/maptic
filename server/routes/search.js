@@ -48,8 +48,9 @@ router.get('/', async (req, res) => {
         let guidance = null;
 
         if (error.response?.status === 401 || error.response?.status === 403) {
-            errorMessage = 'Authentication Failed';
-            guidance = '네이버 개발자 센터(developers.naver.com)에서 발급받은 Client ID와 Secret이 맞는지 확인해주세요. (NCP 키와는 다릅니다!)';
+            errorMessage = '네이버 검색 API 인증 실패';
+            guidance = '1. 클라우드타입 환경 변수(ID, Secret)에 오타나 공백이 없는지 확인하세요. 2. 네이버 개발자 센터 "API 설정"에서 프로젝트의 "웹 서비스 URL"을 정확히 등록했는지 확인하세요.';
+            console.error('❌ Naver Auth Error Detail:', error.response.data);
         } else if (error.response?.status === 404) {
             errorMessage = 'API Not Found';
             guidance = '검색 API URL이 올바르지 않거나, 개발자 센터에서 WEB 설정(http://localhost:3000)을 추가하지 않았을 수 있습니다.';
