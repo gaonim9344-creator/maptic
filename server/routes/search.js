@@ -10,14 +10,19 @@ router.get('/', async (req, res) => {
             return res.status(400).json({ error: 'Query is required' });
         }
 
-        const clientId = process.env.NAVER_SEARCH_CLIENT_ID || process.env.NAVER_API_KEY_ID;
+        const clientId = process.env.NAVER_SEARCH_CLIENT_ID || process.env.NAVER_API_KEY_ID || process.env.NAVER_MAPS_CLIENT_ID;
         const clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET || process.env.NAVER_API_KEY;
 
         if (!clientId || !clientSecret) {
-            console.error('❌ NAVER Search API Keys are missing in environment variables');
+            const missing = [];
+            if (!clientId) missing.push('NAVER_SEARCH_CLIENT_ID');
+            if (!clientSecret) missing.push('NAVER_SEARCH_CLIENT_SECRET');
+
+            console.error(`❌ Missing environment variables: ${missing.join(', ')}`);
             return res.status(401).json({
                 error: 'API Keys missing',
-                details: '서버 설정에 네이버 검색 API 키(NAVER_SEARCH_CLIENT_ID, NAVER_SEARCH_CLIENT_SECRET)가 없습니다.'
+                details: `서버 설정에 필수 키가 없습니다: ${missing.join(', ')}`,
+                guidance: '클라우드타입 환경 변수 설정에서 위 이름들이 정확한지 확인해 주세요.'
             });
         }
 
