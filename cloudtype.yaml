@@ -9,5 +9,6 @@ services:
     env:
       - MONGODB_URI
       - JWT_SECRET
-      - NAVER_MAPS_CLIENT_ID
+      - NAVER_SEARCH_CLIENT_ID
+      - NAVER_SEARCH_CLIENT_SECRET
       - NODE_ENV=production

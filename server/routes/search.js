@@ -10,11 +10,14 @@ router.get('/', async (req, res) => {
             return res.status(400).json({ error: 'Query is required' });
         }
 
-        if (!process.env.NAVER_API_KEY_ID || !process.env.NAVER_API_KEY) {
-            console.error('❌ NAVER API Keys are missing in .env');
+        const clientId = process.env.NAVER_SEARCH_CLIENT_ID || process.env.NAVER_API_KEY_ID;
+        const clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET || process.env.NAVER_API_KEY;
+
+        if (!clientId || !clientSecret) {
+            console.error('❌ NAVER Search API Keys are missing in environment variables');
             return res.status(401).json({
                 error: 'API Keys missing',
-                details: '서버 설정(.env)에 네이버 API 키가 없습니다. NAVER_API_KEY_ID와 NAVER_API_KEY를 설정해주세요.'
+                details: '서버 설정에 네이버 검색 API 키(NAVER_SEARCH_CLIENT_ID, NAVER_SEARCH_CLIENT_SECRET)가 없습니다.'
             });
         }
 
@@ -31,8 +34,8 @@ router.get('/', async (req, res) => {
                 sort: 'random' // Sort by accuracy/relevance (better for distance) instead of reviews
             },
             headers: {
-                'X-Naver-Client-Id': process.env.NAVER_API_KEY_ID,
-                'X-Naver-Client-Secret': process.env.NAVER_API_KEY
+                'X-Naver-Client-Id': clientId,
+                'X-Naver-Client-Secret': clientSecret
             }
         });
 
