@@ -80,4 +80,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔑 MONGODB_URI is ${process.env.MONGODB_URI ? 'SET' : 'MISSING'}`);
+    console.log(`🔑 NAVER_SEARCH_CLIENT_ID is ${process.env.NAVER_SEARCH_CLIENT_ID ? 'SET' : 'MISSING'}`);
 });
