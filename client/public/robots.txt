@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://port-0-maptic-mjtrs3ysff706ce7.sel3.cloudtype.app/sitemap.xml
