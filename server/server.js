@@ -66,6 +66,17 @@ app.get('/api/health', (req, res) => {
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../client/dist')));
 
+    // Explicitly serve SEO files for Google Search Console
+    app.get('/sitemap.xml', (req, res) => {
+        console.log('🤖 Sitemap requested');
+        res.sendFile(path.join(__dirname, '../client/dist/sitemap.xml'));
+    });
+
+    app.get('/robots.txt', (req, res) => {
+        console.log('🤖 Robots.txt requested');
+        res.sendFile(path.join(__dirname, '../client/dist/robots.txt'));
+    });
+
     app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../client/dist/index.html'));
     });
