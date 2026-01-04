@@ -220,46 +220,41 @@ function Home({ user }) {
 
         // Helper to expand keyword into instructional/educational search terms
         // Balanced Patch: Recovered essential keywords like 'FC', 'Club'
+        // Helper to expand keyword into instructional/educational search terms
         const getExpandedKeywords = (sport) => {
             const s = sport.replace(/장$/g, '').replace(/교실$/g, '').trim();
 
-            // Priority: Core keywords + Sport associations
-            if (s === '축구') return [`${s}교실`, `${s}아카데미`, `${s}클럽`, 'FC', s];
-            if (s === '농구') return [`${s}교실`, `${s}아카데미`, `${s}클럽`, s];
-            if (s === '수영') return [`${s}강습`, `${s}교실`, `${s}클럽`, s];
-            if (s === '유도') return [`${s}관`, `${s}장`, `${s}교실`, `${s}도장`, `${s}체육관`, s];
-            if (s === '태권도') return [`${s}도장`, `${s}관`, s];
-            if (s === '복싱') return [`${s}체육관`, '복싱짐', s];
-            if (s === '주짓수') return [`${s}아카데미`, `${s}도장`, s];
+            if (s === '유도') return [`${s}관`, `${s}도장`, `${s}체육관`, `유도 유소년`];
+            if (s === 'mma') return [`종합격투기`, `mma 아카데미`, `주짓수`, `킥복싱`, `복싱`];
+            if (s === '축구') return [`${s}교실`, `${s}아카데미`, `${s}클럽`, '풋살장', 'f.c'];
+            if (s === '농구') return [`${s}교실`, `${s}아카데미`, `${s}클럽`];
+            if (s === '수영') return [`${s}장`, `${s}강습`, `${s}교실`];
+            if (s === '태권도') return [`${s}도장`, `${s}관`];
+            if (s === '복싱') return [`${s}체육관`, '복싱짐', '권투'];
 
-            // Default expansion
-            return [`${s}교실`, `${s}아카데미`, s];
+            return [`${s}교실`, `${s}아카데미`, `${s}장`, `${s}클럽`];
         };
 
         try {
-            // 1. Identify all relevant nearby regions (Parallel Geocoding)
+            // Updated Checkpoints for 5km coverage (0.01 deg ~= 1.1km)
+            // 5km radius = ~0.045 lat degrees. 
+            // We use a dense grid to ensure we don't miss anything in between.
             const checkPoints = [
                 { lat: location.lat, lng: location.lng }, // Center
-                { lat: location.lat + 0.045, lng: location.lng }, // North
-                { lat: location.lat - 0.045, lng: location.lng }, // South
-                { lat: location.lat, lng: location.lng + 0.056 }, // East
-                { lat: location.lat, lng: location.lng - 0.056 }, // West
-                { lat: location.lat + 0.032, lng: location.lng + 0.040 }, // NE
-                { lat: location.lat + 0.032, lng: location.lng - 0.040 }, // NW
-                { lat: location.lat - 0.032, lng: location.lng + 0.040 }, // SE
-                { lat: location.lat - 0.032, lng: location.lng - 0.040 }, // SW
-                // Additional checkpoints for border areas (Jagok-dong etc)
-                { lat: location.lat + 0.022, lng: location.lng }, // N-Mid
-                { lat: location.lat - 0.022, lng: location.lng }, // S-Mid
-                { lat: location.lat, lng: location.lng + 0.028 }, // E-Mid
-                { lat: location.lat, lng: location.lng - 0.028 }  // W-Mid
+                { lat: location.lat + 0.030, lng: location.lng }, // N
+                { lat: location.lat - 0.030, lng: location.lng }, // S
+                { lat: location.lat, lng: location.lng + 0.040 }, // E
+                { lat: location.lat, lng: location.lng - 0.040 }, // W
+                { lat: location.lat + 0.020, lng: location.lng + 0.025 }, // NE
+                { lat: location.lat + 0.020, lng: location.lng - 0.025 }, // NW
+                { lat: location.lat - 0.020, lng: location.lng + 0.025 }, // SE
+                { lat: location.lat - 0.020, lng: location.lng - 0.025 }  // SW
             ];
 
             const regions = (await Promise.all(
                 checkPoints.map(point => getRegionFromCoords(point.lat, point.lng))
             )).filter(region => region && region.area1 && region.area2);
 
-            // Deduplicate regions with high granularity (area1 area2 area3)
             const uniqueRegions = regions.reduce((acc, current) => {
                 const key = `${current.area1} ${current.area2} ${current.area3 || ''}`.trim();
                 if (!acc.find(r => `${r.area1} ${r.area2} ${r.area3 || ''}`.trim() === key)) {
@@ -268,11 +263,7 @@ function Home({ user }) {
                 return acc;
             }, []);
 
-            console.log('🗺️ Search Targets (Nearby Regions):', uniqueRegions.map(r => `${r.area1} ${r.area2}`));
-
             const allResults = [];
-
-            // 2. Prepare ultra-precise queries (Interleaved for multi-sport accuracy)
             const queriesBySport = {};
             for (const sport of selectedSports) {
                 queriesBySport[sport] = [];
@@ -282,13 +273,9 @@ function Home({ user }) {
                         if (region.area3) queriesBySport[sport].push({ query: `${region.area1} ${region.area2} ${region.area3} ${keyword}`, sport });
                         queriesBySport[sport].push({ query: `${region.area1} ${region.area2} ${keyword}`, sport });
                     }
-                    if (uniqueRegions.length === 0 && currentRegion) {
-                        queriesBySport[sport].push({ query: `${currentRegion.area1} ${currentRegion.area2} ${keyword}`, sport });
-                    }
                 }
             }
 
-            // Interleave queries: [SportA-Q1, SportB-Q1, SportA-Q2, SportB-Q2...]
             const interleavedQueries = [];
             let maxLen = Math.max(...Object.values(queriesBySport).map(q => q.length || 0));
             for (let i = 0; i < maxLen; i++) {
@@ -296,113 +283,59 @@ function Home({ user }) {
                     if (queriesBySport[sport][i]) interleavedQueries.push(queriesBySport[sport][i]);
                 }
             }
-            const uniqueQueryTasks = Array.from(new Map(interleavedQueries.map(t => [t.query, t])).values());
+            const uniqueQueryTasks = Array.from(new Map(interleavedQueries.map(t => [t.query, t])).values()).slice(0, 40); // Soft limit to avoid rate hits
 
-            console.log(`🚀 Parallel searching for ${uniqueQueryTasks.length} queries...`);
-
-            // 3. Execute queries in batches of 3 (Speed optimized)
             const batchSize = 3;
-            let stopAll = false;
-
-            for (let i = 0; i < uniqueQueryTasks.length && !stopAll; i += batchSize) {
+            for (let i = 0; i < uniqueQueryTasks.length; i += batchSize) {
                 const batch = uniqueQueryTasks.slice(i, i + batchSize);
-
                 await Promise.all(batch.map(async (task) => {
-                    let start = 1;
-                    let hasMore = true;
-                    const MAX_PER_QUERY = 100;
-                    let retryCount = 0;
-
-                    while (hasMore && start <= MAX_PER_QUERY && !stopAll) {
-                        try {
-                            const response = await searchAPI.searchLocal(task.query, location.lat, location.lng, start);
-                            const items = response.data.items || [];
-
-                            if (items.length > 0) {
-                                allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
-                                if (items.length < 100) hasMore = false; // Backend returns up to 100
-                                else start += 100;
-                            } else {
-                                hasMore = false;
-                            }
-                            retryCount = 0; // Reset on success
-                            await new Promise(r => setTimeout(r, 150));
-                        } catch (e) {
-                            console.error(`API fail for ${task.query}:`, e.message);
-                            if (e.message.includes('012') || e.message.includes('limit')) {
-                                if (retryCount < 2) {
-                                    console.warn(`⏳ Rate limit hit for ${task.query}. Retrying (${retryCount + 1}/2)...`);
-                                    retryCount++;
-                                    await new Promise(r => setTimeout(r, 2000 * retryCount));
-                                    continue; // Retry this page
-                                }
-                                console.warn('🛑 API Rate limit reached. High protection pause.');
-                                await new Promise(r => setTimeout(r, 3000));
-                            }
-                            hasMore = false;
-                        }
+                    try {
+                        const response = await searchAPI.searchLocal(task.query, location.lat, location.lng, 1);
+                        const items = response.data.items || [];
+                        allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
+                        await new Promise(r => setTimeout(r, 100));
+                    } catch (e) {
+                        console.error(`API fail for ${task.query}:`, e.message);
                     }
                 }));
-                if (!stopAll) await new Promise(r => setTimeout(r, 300)); // Optimization: 300ms batch gap
             }
 
-            if (stopAll && allResults.length === 0) {
-                setSearchError('검색 요청이 너무 많습니다. 1분 후에 다시 시도해주세요.');
-                return;
-            }
-
-
-            console.log('📊 Total search results:', allResults.length);
-
-            if (allResults.length === 0) {
-                console.error('❌ No facilities found');
-                setSearchError(`주변 50km 이내에서 스포츠 시설을 찾을 수 없습니다. 다른 지역을 검색해보세요.`);
-                return;
-            }
-
-            // Enhanced Instructional Facilities Filtering 🎓
-            const includeKeywords = [
-                '교실', '아카데미', '클럽', '도장', '학원', '스쿨', '강습', '관', '센터', '회관',
-                '꿈나무', '어린이', '유소년', '주니어', '짐', 'GYM', 'FC', '스포츠', '멀티짐', '공간'
-            ];
+            // Enhanced Junk Filtering 🛑
             const excludeKeywords = [
-                '유도등', '비상구', '소방', '화재', '경보기', '탐지', '피난', '안전', // Safety items
-                '경기장', '운동장', '공원', '스타디움', '스탠드', '동네', '간이', // Mere facilities (Keep '풋살장' as academies use them)
-                '매점', '편의점', '식당', '카페' // Non-sports items
+                '누수', '방수', '설비', '철거', '인테리어', '주차장', '빌라', '원룸', '아파트',
+                '유도등', '비상구', '소방', '화재', '안전', '탐지', '피난', '전문업체', '주방',
+                '매점', '편의점', '식당', '카페', '술집', '병원', '약국', '공인중개사', '부동산'
             ];
 
             const filteredResults = allResults.filter(item => {
-                // Remove HTML tags and convert entities (like &amp; to &) for robust matching
                 const rawTitle = item.title.replace(/<[^>]*>/g, '');
                 const title = rawTitle.replace(/&amp;/g, '&').toLowerCase();
+                const address = (item.address + ' ' + item.roadAddress).toLowerCase();
+                const category = (item.category || '').toLowerCase();
 
-                // 1. Check for negative keywords (Exclude if found)
-                const hasNegative = excludeKeywords.some(keyword => title.includes(keyword));
-                if (hasNegative) {
-                    console.log(`🚫 Excluded (Implicit Facility/Safety):`, rawTitle);
+                // 1. Strict Exclusions
+                if (excludeKeywords.some(key => title.includes(key) || category.includes(key))) {
+                    console.log(`🚫 Strongly Excluded: ${rawTitle}`);
                     return false;
                 }
 
-                // 2. MUST have instructional context OR be a clear sports facility
-                const hasInstructional = includeKeywords.some(keyword => title.includes(keyword));
+                // 2. Category Check (Prioritize sports related categories)
+                const isSportsCategory = category.includes('스포츠') || category.includes('체육') ||
+                    category.includes('학원') || category.includes('강습') ||
+                    category.includes('격투기') || category.includes('무술') ||
+                    category.includes('헬스') || category.includes('휘트니스') ||
+                    category.includes('요가') || category.includes('골프');
 
-                // Flexible Match: If it has 'FC', 'Club', 'Academy' or is a specific sport studio, it's a pass
-                const isClearSportsFacility =
-                    title.includes('fc') ||
-                    title.includes('클럽') ||
-                    title.includes('스포츠') ||
-                    title.includes('헬스') || title.includes('휘트니스') || title.includes('피트니스') ||
-                    title.includes('필라테스') || title.includes('요가') || title.includes('골프') ||
-                    title.includes('도장') || title.includes('체육관') ||
-                    title.includes('유도') || title.includes('주짓수') || title.includes('태권도') ||
-                    title.includes('검도') || title.includes('복싱');
+                // 3. Keyword Context Check
+                const sport = Array.isArray(item.sport) ? item.sport[0] : item.sport;
+                const hasSportKeyword = title.includes(sport.toLowerCase()) ||
+                    (sport === 'mma' && (title.includes('격투기') || title.includes('주짓수') || title.includes('킥복싱')));
 
-                if (hasInstructional || isClearSportsFacility) {
-                    return true;
-                }
+                // 4. Distance Validation (Manually check 5km as Naver Local API doesn't filter by distance well)
+                // Note: We don't have lat/lng for items yet (need to geocode or use maps service)
+                // For now, we trust the region-based search leads to nearby results.
 
-                console.log(`⚠️ Excluded (No Instructional Keyword):`, rawTitle);
-                return false;
+                return hasSportKeyword || isSportsCategory;
             });
 
             console.log(`✂️ Filtered ${allResults.length - filteredResults.length} irrelevant results. Remaining: ${filteredResults.length}`);
