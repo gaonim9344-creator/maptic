@@ -325,48 +325,37 @@ function Home({ user }) {
                 interleavedQueries.unshift({ query: searchQuery, sport: selectedSports[0] || searchQuery });
             }
 
-            // Optimized batch for thorough searching (Increased to 200)
-            const uniqueQueryTasks = Array.from(new Map(interleavedQueries.map(t => [t.query, t])).values()).slice(0, 200);
+            // Increased to 300 queries for comprehensive coverage - NO early stopping
+            const uniqueQueryTasks = Array.from(new Map(interleavedQueries.map(t => [t.query, t])).values()).slice(0, 300);
 
+            console.log(`📊 Processing ${uniqueQueryTasks.length} search queries for ${effectiveDistance}km radius`);
 
             const batchSize = 1; // Sequential processing to prevent rate limits
-            let validEstimatedCount = 0;
 
+            // Process ALL queries without early stopping for complete coverage
             for (let i = 0; i < uniqueQueryTasks.length; i += batchSize) {
-                // Smart Stop: Only stop if we have a healthy number of results ALREADY FILTERED or too many raw items
-                // Increased threshold to 50 to ensure we don't stop too early for mixed sports
-                if (validEstimatedCount > 50 || allResults.length > 800) {
-                    console.log(`🛑 Smart Stop: ${validEstimatedCount} valid facilities found (${allResults.length} raw). Stopping.`);
-                    break;
-                }
-
                 const batch = uniqueQueryTasks.slice(i, i + batchSize);
                 await Promise.all(batch.map(async (task) => {
                     try {
-                        const response = await searchAPI.searchLocal(task.query, center.lat, center.lng, 1);
+                        const response = await searchAPI.searchLocal(task.query, center.lat, center.lng, 5);
                         const items = response.data.items || [];
                         allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
 
-                        // Update valid estimate (rough check)
-                        const newValids = items.filter(item => {
-                            const title = item.title.replace(/<[^>]*>/g, '').toLowerCase();
-                            return title.includes(task.sport.toLowerCase().replace(/관$/, '').replace(/도장$/, ''));
-                        }).length;
-                        validEstimatedCount += newValids;
-
-                        // Dynamic delay based on query priority
-                        const delay = i < 5 ? 100 : 250;
+                        // Reduced delay for faster searching
+                        const delay = 150;
                         await new Promise(r => setTimeout(r, delay));
                     } catch (e) {
                         if (e.response?.data?.errorCode === '012' || e.response?.status === 429) {
                             console.warn('⚠️ Rate limit hit (012). Waiting longer...');
-                            await new Promise(r => setTimeout(r, 1000)); // 1s cooldown
+                            await new Promise(r => setTimeout(r, 1500)); // 1.5s cooldown
                         } else {
                             console.error(`API fail for ${task.query}:`, e.message);
                         }
                     }
                 }));
             }
+
+            console.log(`📦 Collected ${allResults.length} raw results`);
 
             // Enhanced Junk Filtering 🛑
             const excludeKeywords = [
@@ -786,13 +775,13 @@ function Home({ user }) {
                 onClick={() => userLocation && naverMapRef.current.panTo(new window.naver.maps.LatLng(userLocation.lat, userLocation.lng))}
                 title="내 위치로 이동"
             >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <line x1="12" y1="2" x2="12" y2="5"></line>
-                    <line x1="12" y1="19" x2="12" y2="22"></line>
-                    <line x1="2" y1="12" x2="5" y2="12"></line>
-                    <line x1="19" y1="12" x2="22" y2="12"></line>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <circle cx="12" cy="12" r="3" fill="currentColor" />
+                    <line x1="12" y1="0" x2="12" y2="4" stroke="currentColor" strokeWidth="2" />
+                    <line x1="12" y1="20" x2="12" y2="24" stroke="currentColor" strokeWidth="2" />
+                    <line x1="0" y1="12" x2="4" y2="12" stroke="currentColor" strokeWidth="2" />
+                    <line x1="20" y1="12" x2="24" y2="12" stroke="currentColor" strokeWidth="2" />
                 </svg>
             </button>
 
