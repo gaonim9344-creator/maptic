@@ -36,7 +36,8 @@ router.get('/', async (req, res) => {
                 query: query,
                 display: 100, // Maximize results per call
                 start: start || 1, // Use passed start page or default to 1
-                sort: 'random' // Sort by accuracy/relevance (better for distance) instead of reviews
+                sort: 'sim', // Sort by relevance to ensures the best matches for specific keywords appear first
+                coordinate: (lat && lng) ? `${lng},${lat}` : undefined // Pass coordinates for better proximity mapping
             },
             headers: {
                 'X-Naver-Client-Id': clientId,

@@ -13,10 +13,9 @@ function NavBar({ user, onLogout }) {
     return (
         <nav className="navbar glass-container">
             <div className="container flex items-center justify-between">
-                <Link to="/" className="navbar-brand">
-                    <span className="brand-icon">🏃</span>
+                <a href="/" className="navbar-brand">
                     <span className="brand-text">maptic</span>
-                </Link>
+                </a>
 
                 <div className="navbar-links flex items-center gap-md">
                     <Link to="/" className="nav-link">홈</Link>
