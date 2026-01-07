@@ -111,22 +111,104 @@
     position: absolute;
     bottom: 30px;
     right: 30px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    background: white;
+    color: #333;
     z-index: 100;
     cursor: pointer;
-    transition: transform 0.2s, background 0.2s;
-    border: 1px solid var(--glass-border);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid #ddd;
+    transition: background 0.2s;
 }
 
 .my-location-btn:hover {
-    transform: scale(1.1);
-    background: rgba(255, 255, 255, 0.1);
+    background: #f4f4f4;
+}
+
+.distance-filter-controls {
+    position: absolute;
+    bottom: 90px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+}
+
+.distance-btn {
+    width: 48px;
+    height: 36px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    color: #666;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    padding: 0;
+}
+
+.distance-btn.active {
+    background: #4299e1;
+    color: white;
+    border-color: #3182ce;
+}
+
+.distance-btn:hover:not(.active) {
+    background: #f8f9fa;
+}
+
+/* Naver Style Location Marker */
+.naver-location-marker {
+    position: relative;
+    width: 22px;
+    height: 22px;
+}
+
+.naver-location-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: #386aff;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+
+.naver-location-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: rgba(56, 106, 255, 0.2);
+    border-radius: 50%;
+    z-index: 1;
+    animation: naver-pulse 2s ease-out infinite;
+}
+
+@keyframes naver-pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
 }
 
 .search-form {

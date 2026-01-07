@@ -21,16 +21,9 @@
     transform: scale(1.05);
 }
 
-.brand-icon {
-    font-size: 2rem;
-    filter: drop-shadow(0 0 10px rgba(66, 153, 225, 0.5));
-}
-
 .brand-text {
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 .navbar-links {

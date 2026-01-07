@@ -3,6 +3,24 @@ import { getSportEmoji, SPORTS_LIST } from '../utils/sportsData';
 import { searchAPI } from '../utils/api';
 import './Home.css';
 
+// Haversine formula to calculate distance between two points
+const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d;
+};
+
+const deg2rad = (deg) => {
+    return deg * (Math.PI / 180);
+};
+
 function Home({ user }) {
     const mapRef = useRef(null);
     const naverMapRef = useRef(null);
@@ -14,7 +32,9 @@ function Home({ user }) {
     const [currentRegion, setCurrentRegion] = useState({ area1: '서울', area2: '', area3: '' }); // Default to Seoul
     const [isSearching, setIsSearching] = useState(false);
     const [lastSearchCenter, setLastSearchCenter] = useState(null);
+    const [searchDistance, setSearchDistance] = useState(3); // Default to 3km
     const currentInfoWindowRef = useRef(null); // Track currently open InfoWindow
+    const userMarkerRef = useRef(null); // Track user marker for easy updates
     const searchDebounceRef = useRef(null);
 
     useEffect(() => {
@@ -117,58 +137,22 @@ function Home({ user }) {
             }
         });
 
-        // Add modern user location marker
-        new window.naver.maps.Marker({
+        // Add Naver-style user location marker
+        const userMarker = new window.naver.maps.Marker({
             position: new window.naver.maps.LatLng(location.lat, location.lng),
             map: map,
             title: '현재 위치',
             icon: {
                 content: `
-                    <div style="
-                        position: relative;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                    ">
-                        <!-- Outer pulse ring -->
-                        <div style="
-                            position: absolute;
-                            width: 60px;
-                            height: 60px;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            border-radius: 50%;
-                            opacity: 0.3;
-                            animation: pulse 2s ease-out infinite;
-                        "></div>
-                        <!-- Inner marker -->
-                        <div style="
-                            position: relative;
-                            width: 40px;
-                            height: 40px;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            border-radius: 50%;
-                            border: 4px solid white;
-                            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6), 0 0 0 4px rgba(102, 126, 234, 0.2);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-size: 18px;
-                            z-index: 1;
-                        ">
-                            📍
-                        </div>
+                    <div class="naver-location-marker">
+                        <div class="naver-location-dot"></div>
+                        <div class="naver-location-pulse"></div>
                     </div>
-                    <style>
-                        @keyframes pulse {
-                            0% { transform: scale(0.8); opacity: 0.5; }
-                            50% { transform: scale(1.2); opacity: 0.2; }
-                            100% { transform: scale(1.5); opacity: 0; }
-                        }
-                    </style>
                 `,
-                anchor: new window.naver.maps.Point(30, 30)
+                anchor: new window.naver.maps.Point(11, 11)
             }
         });
+        userMarkerRef.current = userMarker;
 
         setMapLoaded(true);
 
@@ -237,7 +221,9 @@ function Home({ user }) {
     };
 
     // Load facilities based on user preferences or search
-    const loadFacilities = async (center, selectedSports = null, shouldFitBounds = true) => {
+    // overrideDistance allows direct distance passing (useful when state hasn't updated yet)
+    const loadFacilities = async (center, selectedSports = null, shouldFitBounds = true, overrideDistance = null) => {
+        const effectiveDistance = overrideDistance !== null ? overrideDistance : searchDistance;
         // Clear existing markers
         markersRef.current.forEach(marker => marker.setMap(null));
         markersRef.current = [];
@@ -269,21 +255,26 @@ function Home({ user }) {
         };
 
         try {
-            // Updated Checkpoints for 5km coverage (0.01 deg ~= 1.1km)
-            // 5km radius = ~0.045 lat degrees. 
-            // We use a dense grid to ensure we don't miss anything in between.
-            // Ultra-dense 5x5 Grid (~1km spacing) for total coverage
+            // Updated Checkpoints for variable search distance - More comprehensive grid
             const checkPoints = [];
-            const stepLat = 0.012; // ~1.3km
-            const stepLng = 0.015; // ~1.3km
-            for (let i = -2; i <= 2; i++) {
-                for (let j = -2; j <= 2; j++) {
+            // Use 1.2x the search distance to ensure we capture facilities at the edge
+            const searchBuffer = effectiveDistance * 1.2;
+            const radiusDeg = searchBuffer * 0.009; // Approx degrees for km
+            // More dense grid for accurate coverage
+            const steps = effectiveDistance <= 2 ? 2 : (effectiveDistance <= 3 ? 3 : 4);
+            const stepLat = radiusDeg / steps;
+            const stepLng = (radiusDeg * 1.2) / steps; // Longitude is slightly wider in Korea
+
+            for (let i = -steps; i <= steps; i++) {
+                for (let j = -steps; j <= steps; j++) {
                     checkPoints.push({
                         lat: center.lat + (i * stepLat),
                         lng: center.lng + (j * stepLng)
                     });
                 }
             }
+
+            console.log(`🔍 Searching with ${checkPoints.length} checkpoints for ${effectiveDistance}km radius`);
 
 
             const regions = (await Promise.all(
@@ -459,24 +450,6 @@ function Home({ user }) {
             const bounds = new window.naver.maps.LatLngBounds();
             let markerCount = 0;
 
-            // Haversine formula to calculate distance between two points
-            const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
-                const R = 6371; // Radius of the earth in km
-                const dLat = deg2rad(lat2 - lat1);
-                const dLon = deg2rad(lon2 - lon1);
-                const a =
-                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                const d = R * c; // Distance in km
-                return d;
-            };
-
-            const deg2rad = (deg) => {
-                return deg * (Math.PI / 180);
-            };
-
             // Collection array for sorting
             const validFacilities = [];
 
@@ -528,26 +501,18 @@ function Home({ user }) {
                         console.log(`📏 Distance: ${item.title.replace(/<[^>]*>/g, '')} - ${distance.toFixed(2)}km ${distance <= 5 ? '✅' : '❌'}`);
                     }
 
-                    // Distance check: Relax to 10km for specific sporting keywords to ensure border areas appear
-                    const cleanTitle = item.title.replace(/<[^>]*>/g, '').toLowerCase();
-                    const isStrongMatch =
-                        cleanTitle.includes('교실') || cleanTitle.includes('아카데미') ||
-                        cleanTitle.includes('도장') || cleanTitle.includes('유도관') || cleanTitle.includes('축구교실') ||
-                        cleanTitle.includes('클럽') || cleanTitle.includes('fc') || cleanTitle.includes('유도');
-
-                    const maxDist = isStrongMatch ? 10 : 5;
-
-
+                    // Distance check based on effectiveDistance
+                    const maxDist = effectiveDistance;
                     if (distance <= maxDist) {
                         validFacilities.push({ ...item, latlng, distance });
                     }
                 }
             }));
 
-            // Sort by distance (closest first) - show ALL facilities within 5km
+            // Sort by distance (closest first)
             validFacilities.sort((a, b) => a.distance - b.distance);
 
-            console.log(`✅ Found ${validFacilities.length} valid facilities within 5km`);
+            console.log(`✅ Found ${validFacilities.length} valid facilities within ${effectiveDistance}km`);
             if (validFacilities.length > 0) {
                 console.log('🎯 Displaying ALL facilities:', validFacilities.map(f => ({ name: f.title.replace(/<[^>]*>?/gm, ''), distance: f.distance.toFixed(2) + 'km', sport: f.sport })));
             }
@@ -771,6 +736,29 @@ function Home({ user }) {
                 )}
             </div>
 
+            {/* Distance Filter Controls */}
+            <div className="distance-filter-controls fade-in">
+                {[2, 3, 5].map(dist => (
+                    <button
+                        key={dist}
+                        className={`distance-btn ${searchDistance === dist ? 'active' : ''}`}
+                        onClick={() => {
+                            setSearchDistance(dist);
+                            // Get current map center for search
+                            const searchCenter = naverMapRef.current
+                                ? { lat: naverMapRef.current.getCenter().lat(), lng: naverMapRef.current.getCenter().lng() }
+                                : userLocation;
+                            // Pass new distance directly since setState is async
+                            loadFacilities(searchCenter, user?.selectedSports, true, dist);
+                        }}
+                    >
+                        {dist}km
+                    </button>
+                ))}
+            </div>
+
+
+
             {/* Floating Search Bar */}
             <div className="search-floating glass-container fade-in">
                 <form onSubmit={handleSearch} className="search-form">
@@ -797,47 +785,23 @@ function Home({ user }) {
                 className="my-location-btn"
                 onClick={() => userLocation && naverMapRef.current.panTo(new window.naver.maps.LatLng(userLocation.lat, userLocation.lng))}
                 title="내 위치로 이동"
-                style={{
-                    position: 'absolute',
-                    bottom: '30px',
-                    right: '20px',
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '16px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2)',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)'
-                }}
-                onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.5), 0 6px 16px rgba(0, 0, 0, 0.25)';
-                }}
-                onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2)';
-                }}
             >
-                🎯
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <line x1="12" y1="2" x2="12" y2="5"></line>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="5" y2="12"></line>
+                    <line x1="19" y1="12" x2="22" y2="12"></line>
+                </svg>
             </button>
 
-            {
-                !mapLoaded && (
-                    <div className="map-loading">
-                        <div className="spinner"></div>
-                        <p>지도를 불러오는 중...</p>
-                    </div>
-                )
-            }
+            {!mapLoaded && (
+                <div className="map-loading">
+                    <div className="spinner"></div>
+                    <p>지도를 불러오는 중...</p>
+                </div>
+            )}
         </div >
     );
 }
