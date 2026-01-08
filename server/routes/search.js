@@ -34,10 +34,13 @@ router.get('/', async (req, res) => {
         const response = await axios.get(url, {
             params: {
                 query: query,
-                display: 100, // Maximize results per call
-                start: start || 1, // Use passed start page or default to 1
-                sort: 'sim', // Sort by relevance to ensures the best matches for specific keywords appear first
-                coordinate: (lat && lng) ? `${lng},${lat}` : undefined // Pass coordinates for better proximity mapping
+                display: 5, // Naver Local Search API Max is 5
+                start: start || 1,
+                sort: 'random', // Use random to get diverse results or 'comment' for popularity? 'sim' is default. Let's use 'random' if available or just default 'sim' but iterate. Actually 'sim' is best for relevance.
+                // Wait, 'random' sort is deprecated or specific. Let's stick to 'sim' (similarity) or 'comment' (reviews). 
+                // 'sim' is best for "is this a Judo place?".
+                sort: 'sim',
+                coordinate: (lat && lng) ? `${lng},${lat}` : undefined // Pass coordinates for better proximity mapping (if API supports it effectively)
             },
             headers: {
                 'X-Naver-Client-Id': clientId,

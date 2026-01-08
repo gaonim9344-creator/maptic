@@ -235,8 +235,12 @@ function Home({ user }) {
             selectedSports = ['축구', '농구', '수영', '헬스', '요가', '필라테스', '태권도', '유도'];
         }
 
-        console.log('🔍 Starting facility search with sports:', selectedSports);
+        console.log('🔍 Deep Scanning started with sports:', selectedSports);
         console.log('📍 Search location:', center);
+
+        // Notify user of deep scan
+        setSearchError(`🔍 꼼꼼히 검색 중... (반경 ${effectiveDistance}km 내 모든 동 조회)`);
+
 
         // Helper to expand keyword into instructional/educational search terms
         const getExpandedKeywords = (sport) => {
@@ -245,117 +249,130 @@ function Home({ user }) {
             const learningKeywords = [`${s}교실`, `${s}아카데미`, `${s}클럽`, `${s}학원`, `${s}학교`];
             const baseKeywords = [s, `${s}센터`, `${s}체육관`];
 
-            if (s === '유도') return [`${s}관`, `${s}도장`, `${s}교실`, `${s}아카데미`, `${s}클럽`, `${s}학원`, `${s}학교`, '대한유도', '유도장'].filter(Boolean);
-            if (s === '태권도') return [`${s}도장`, `${s}관`, `${s}교실`, `${s}아카데미`, `${s}클럽`, `${s}학원`, `${s}학교`].filter(Boolean);
-            if (s === '복싱') return ['복싱짐', '권투', ...learningKeywords, ...baseKeywords].filter(Boolean);
-            if (s === '헬스') return ['피트니스', '휘트니스', ...baseKeywords, 'gx', ...learningKeywords].filter(Boolean);
-            if (s === '수영') return ['수영장', '강습', ...learningKeywords, ...baseKeywords].filter(Boolean);
+            if (s === '유도') return [`${s}관`, `${s}도장`, `${s}교실`, `${s}아카데미`, `${s}클럽`, '대한유도', '유도장'].filter(Boolean);
+            if (s === '태권도') return [`${s}도장`, `${s}관`, `${s}교실`, `${s}아카데미`, `${s}클럽`].filter(Boolean);
+            if (s === '복싱') return ['복싱짐', '권투', ...learningKeywords].filter(Boolean);
+            if (s === '헬스') return ['피트니스', '휘트니스', ...baseKeywords, 'gx'].filter(Boolean);
+            if (s === '수영') return ['수영장', '강습', ...learningKeywords].filter(Boolean);
 
             return [...learningKeywords, ...baseKeywords].filter(Boolean);
         };
 
         try {
-            // Updated Checkpoints for variable search distance - More comprehensive grid
+            // 1. Generate Dense Grid to Capture All Administrative Areas (Dongs)
+            // Use 300m interval to ensure we don't skip any small Dong
             const checkPoints = [];
-            // Use 1.2x the search distance to ensure we capture facilities at the edge
-            const searchBuffer = effectiveDistance * 1.2;
-            const radiusDeg = searchBuffer * 0.009; // Approx degrees for km
-            // More dense grid for accurate coverage
-            const steps = effectiveDistance <= 2 ? 2 : (effectiveDistance <= 3 ? 3 : 4);
-            const stepLat = radiusDeg / steps;
-            const stepLng = (radiusDeg * 1.2) / steps; // Longitude is slightly wider in Korea
+            const searchBuffer = effectiveDistance * 1.1; // 10% buffer
+            const gridIntervalKm = 0.3; // 300m
+            const radiusDeg = searchBuffer * 0.009;
+            const steps = Math.ceil(searchBuffer / gridIntervalKm);
+
+            const stepLat = gridIntervalKm * 0.009;
+            const stepLng = gridIntervalKm * 0.009 * 1.2;
 
             for (let i = -steps; i <= steps; i++) {
                 for (let j = -steps; j <= steps; j++) {
-                    checkPoints.push({
-                        lat: center.lat + (i * stepLat),
-                        lng: center.lng + (j * stepLng)
-                    });
-                }
-            }
+                    const lat = center.lat + (i * stepLat);
+                    const lng = center.lng + (j * stepLng);
 
-            console.log(`🔍 Searching with ${checkPoints.length} checkpoints for ${effectiveDistance}km radius`);
-
-
-            const regions = (await Promise.all(
-                checkPoints.map(point => getRegionFromCoords(point.lat, point.lng))
-            )).filter(region => region && region.area1 && region.area2);
-
-            const uniqueRegions = regions.reduce((acc, current) => {
-                const key = `${current.area1} ${current.area2} ${current.area3 || ''}`.trim();
-                if (!acc.find(r => `${r.area1} ${r.area2} ${r.area3 || ''}`.trim() === key)) {
-                    acc.push(current);
-                }
-                return acc;
-            }, []);
-
-            const allResults = [];
-            const queriesBySport = {};
-            for (const sport of selectedSports) {
-                queriesBySport[sport] = [];
-                const keywords = getExpandedKeywords(sport);
-
-                // If search query looks like a specific place name (long), add it directly first
-                if (searchQuery.length > 5 && searchQuery.includes(sport)) {
-                    queriesBySport[sport].push({ query: searchQuery, sport });
-                }
-
-                for (const keyword of keywords) {
-                    for (const region of uniqueRegions) {
-                        // Prioritize area3 (Dong) for hyper-local accuracy
-                        if (region.area3) queriesBySport[sport].push({ query: `${region.area1} ${region.area2} ${region.area3} ${keyword}`, sport });
-                        queriesBySport[sport].push({ query: `${region.area1} ${region.area2} ${keyword}`, sport });
+                    // Check if point is roughly within circular radius
+                    if (getDistanceFromLatLonInKm(center.lat, center.lng, lat, lng) <= searchBuffer) {
+                        checkPoints.push({ lat, lng });
                     }
-                    // Capture local keyword without region to find places like "Daehan Judo관" anywhere
-                    if (keyword.length >= 2) queriesBySport[sport].push({ query: keyword, sport });
                 }
             }
 
-            const interleavedQueries = [];
-            let maxLen = Math.max(...Object.values(queriesBySport).map(q => q.length || 0));
-            for (let i = 0; i < maxLen; i++) {
-                for (const sport of selectedSports) {
-                    if (queriesBySport[sport] && queriesBySport[sport][i]) interleavedQueries.push(queriesBySport[sport][i]);
-                }
-            }
+            console.log(`📡 Analyzing ${checkPoints.length} grid points for administrative areas...`);
 
-            // High Priority: If user manually searched, ensure the raw string is searched FIRST
-            if (searchQuery && searchQuery.length >= 2) {
-                // Remove duplicates and put raw query at the very beginning
-                interleavedQueries.unshift({ query: searchQuery, sport: selectedSports[0] || searchQuery });
-            }
+            // 2. Reverse Geocode Limit Processing (Batching to avoid browser freeze)
+            // Naver JS Geocoder is client-side but still good to batch
+            const uniqueRegions = new Map();
+            const processBatchSize = 20;
 
-            // Increased to 300 queries for comprehensive coverage - NO early stopping
-            const uniqueQueryTasks = Array.from(new Map(interleavedQueries.map(t => [t.query, t])).values()).slice(0, 300);
-
-            console.log(`📊 Processing ${uniqueQueryTasks.length} search queries for ${effectiveDistance}km radius`);
-
-            const batchSize = 1; // Sequential processing to prevent rate limits
-
-            // Process ALL queries without early stopping for complete coverage
-            for (let i = 0; i < uniqueQueryTasks.length; i += batchSize) {
-                const batch = uniqueQueryTasks.slice(i, i + batchSize);
-                await Promise.all(batch.map(async (task) => {
-                    try {
-                        const response = await searchAPI.searchLocal(task.query, center.lat, center.lng, 5);
-                        const items = response.data.items || [];
-                        allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
-
-                        // Reduced delay for faster searching
-                        const delay = 150;
-                        await new Promise(r => setTimeout(r, delay));
-                    } catch (e) {
-                        if (e.response?.data?.errorCode === '012' || e.response?.status === 429) {
-                            console.warn('⚠️ Rate limit hit (012). Waiting longer...');
-                            await new Promise(r => setTimeout(r, 1500)); // 1.5s cooldown
-                        } else {
-                            console.error(`API fail for ${task.query}:`, e.message);
-                        }
+            for (let i = 0; i < checkPoints.length; i += processBatchSize) {
+                const batch = checkPoints.slice(i, i + processBatchSize);
+                await Promise.all(batch.map(async (point) => {
+                    const region = await getRegionFromCoords(point.lat, point.lng);
+                    if (region && region.area3) {
+                        // Key: "Seoul Gangnam-gu Yeoksam-dong"
+                        const key = `${region.area1} ${region.area2} ${region.area3}`;
+                        uniqueRegions.set(key, region);
                     }
                 }));
             }
 
-            console.log(`📦 Collected ${allResults.length} raw results`);
+            const targetAreas = Array.from(uniqueRegions.values());
+            console.log(`🎯 Found ${targetAreas.length} target administrative areas (Dongs):`, targetAreas.map(r => r.area3));
+            setSearchError(`📍 ${targetAreas.length}개 동을 발견했습니다. 정밀 검색을 시작합니다...`);
+
+
+            // 3. Build Detailed Queries: "Area + Sport"
+            const finalQueries = [];
+
+            // Add direct user query if exists
+            if (searchQuery && searchQuery.length >= 2) {
+                finalQueries.push({ query: searchQuery, sport: '검색' });
+            }
+
+            for (const sport of selectedSports) {
+                const keywords = getExpandedKeywords(sport);
+
+                for (const area of targetAreas) {
+                    // Create specific location-based queries
+                    // e.g. "서울시 강남구 역삼동 유도"
+                    // Also add simpler one: "역삼동 유도" (Naver handles local context well usually, but full string is safer)
+
+                    // We pick just ONE best query per Dong/Sport combo to avoid explosion, 
+                    // relying on the specific keyword suffixes to match titles.
+                    // Actually, "Yeoksam-dong Judo" covers most. 
+
+                    // Use the most common suffix for the query itself
+                    const suffix = keywords[0] || sport;
+                    finalQueries.push({
+                        // Query: "Yeoksam-dong Judo" - very specific
+                        query: `${area.area3} ${sport}`,
+                        sport: sport,
+                        area: area.area3
+                    });
+                    // Backup: "Gangnam-gu Judo" (for border areas, but we have dense grid so maybe overkill? Let's stick to Dong for precision)
+                }
+            }
+
+            console.log(`🚀 Executing ${finalQueries.length} deep search queries...`);
+
+            // 4. Execution with rate limiting
+            const allResults = [];
+            const queryBatchSize = 3; // Conservative batch size for API
+            let completedQueries = 0;
+
+            for (let i = 0; i < finalQueries.length; i += queryBatchSize) {
+                const batch = finalQueries.slice(i, i + queryBatchSize);
+
+                // Update progress UI every few batches
+                if (i % 6 === 0) {
+                    const progress = Math.round((completedQueries / finalQueries.length) * 100);
+                    const processingArea = batch[0]?.area || '주변';
+                    setSearchError(`🔎 ${processingArea} 등 검색 중... (${progress}%)`);
+                }
+
+                await Promise.all(batch.map(async (task) => {
+                    try {
+                        const response = await searchAPI.searchLocal(task.query, center.lat, center.lng, 5); // display 5
+                        const items = response.data.items || [];
+                        allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
+
+                        // We do NOT stop early. We want coverage.
+                        await new Promise(r => setTimeout(r, 100)); // Small delay between calls
+                    } catch (e) {
+                        // Ignore errors to keep going
+                        console.warn(`Query failed: ${task.query}`);
+                    }
+                }));
+                completedQueries += batch.length;
+            }
+
+            // 5. Post-processing & Filtering
+            setSearchError(`✨ 결과 정리 중...`);
 
             // Enhanced Junk Filtering 🛑
             const excludeKeywords = [
@@ -367,58 +384,32 @@ function Home({ user }) {
             const filteredResults = allResults.filter(item => {
                 const rawTitle = item.title.replace(/<[^>]*>/g, '');
                 const title = rawTitle.replace(/&amp;/g, '&').toLowerCase();
-                const address = (item.address + ' ' + item.roadAddress).toLowerCase();
                 const category = (item.category || '').toLowerCase();
 
                 // 1. Strict Exclusions
                 if (excludeKeywords.some(key => title.includes(key) || category.includes(key))) {
-                    console.log(`🚫 Strongly Excluded: ${rawTitle}`);
                     return false;
                 }
 
-                // 2. Category Check (Prioritize sports related categories)
-                const isSportsCategory = category.includes('스포츠') || category.includes('체육') ||
-                    category.includes('학원') || category.includes('강습') ||
-                    category.includes('격투기') || category.includes('무술') ||
-                    category.includes('유도') || category.includes('태권도') ||
-                    category.includes('헬스') || category.includes('휘트니스') ||
-                    category.includes('요가') || category.includes('필라테스') ||
-                    category.includes('주짓수') || category.includes('골프');
-
-                // 3. Keyword Context Check & Instructional Filtering
+                // 2. Relaxed inclusion: If title has sport name, accept it.
+                // This maximizes "showing everything".
                 const sports = Array.isArray(item.sport) ? item.sport : [item.sport];
-                const instructionalTerms = ['교실', '아카데미', '학원', '클럽', 'fc', '유소년', '어린이', '강습', '지도', '도장', '관', 'gym', '유도', '스포츠', '체육관', '센터'];
-
-                const isInstructional = instructionalTerms.some(term => title.includes(term) || category.includes(term));
-
-                // For soccer, we still want to be careful about generic fields
-                if (sports.includes('축구') || sports.includes('풋살')) {
-                    const isGenericField = (title.includes('축구장') || title.includes('풋살장') || title.includes('경기장')) &&
-                        !(title.includes('교실') || title.includes('아카데미') || title.includes('클럽') || title.includes('fc'));
-                    if (isGenericField) return false;
-                }
-
-                // Check if any of the target sports are mentioned in title OR if it's a specific manual search
-                const hasSportKeyword = sports.some(s => {
-                    const baseSport = s.toLowerCase().replace(/동$/, '').replace(/점$/, '').trim();
-                    return title.includes(baseSport) ||
-                        (s === 'mma' && (title.includes('격투기') || title.includes('주짓수') || title.includes('킥복싱')));
+                const hasSportInTitle = sports.some(s => {
+                    const base = s.replace(/장$/, '').replace(/교실$/, '').trim();
+                    return title.includes(base);
                 });
 
-                // If the user's manual search string is a literal match for the title, keep it regardless
-                if (searchQuery && title.includes(searchQuery.toLowerCase().trim())) return true;
+                if (hasSportInTitle) return true;
 
-                return (hasSportKeyword && isInstructional) || isSportsCategory;
+                // 3. Fallback to category check
+                const isSportsCategory = category.includes('스포츠') || category.includes('체육') ||
+                    category.includes('학원') || category.includes('강습') ||
+                    category.includes('도장') || category.includes('관');
+
+                return isSportsCategory;
             });
 
-            console.log(`✂️ Filtered ${allResults.length - filteredResults.length} irrelevant results. Remaining: ${filteredResults.length}`);
-
-            if (filteredResults.length === 0) {
-                setSearchError(`관련 시설을 찾을 수 없습니다.`);
-                return;
-            }
-
-            // 2. Smart Multi-sport Merging
+            // Dedup
             const finalResultsMap = new Map();
             filteredResults.forEach(item => {
                 const key = `${item.title.replace(/<[^>]*>/g, '')}-${item.address}`;
@@ -435,103 +426,74 @@ function Home({ user }) {
 
             const uniqueItems = Array.from(finalResultsMap.values());
 
-            // 3. Geocode and Create markers for ALL items
+            // Geocode & Distance Check
             const bounds = new window.naver.maps.LatLngBounds();
             let markerCount = 0;
-
-            // Collection array for sorting
             const validFacilities = [];
 
             await Promise.all(uniqueItems.map(async (item) => {
-                let latlng = null;
-                try {
+                if (!item.address) return;
 
-                    // Geocode address if coordinates missing
-                    if (item.address) {
-                        const geocodeRes = await new Promise((resolve) => {
-                            window.naver.maps.Service.geocode({ query: item.address }, (status, response) => {
-                                if (status === window.naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
-                                    const addr = response.v2.addresses[0];
-                                    resolve(new window.naver.maps.LatLng(addr.y, addr.x));
-                                } else {
-                                    resolve(null);
-                                }
-                            });
+                let latlng = null;
+                // Try to get coords from item if available (Naver search result usually lacks this, need geocode)
+                // Wait, we need to geocode.
+                try {
+                    const geocodeRes = await new Promise((resolve) => {
+                        window.naver.maps.Service.geocode({ query: item.address }, (status, response) => {
+                            if (status === window.naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
+                                const addr = response.v2.addresses[0];
+                                resolve(new window.naver.maps.LatLng(addr.y, addr.x));
+                            } else {
+                                resolve(null);
+                            }
                         });
-                        if (geocodeRes) latlng = geocodeRes;
-                    }
+                    });
+                    if (geocodeRes) latlng = geocodeRes;
                 } catch (e) {
-                    console.warn('Coordinate conversion failed:', e);
+                    console.warn('Geocode failed', e);
                 }
 
                 if (latlng) {
-                    // Filter by distance (5km)
-                    const targetLat = typeof latlng.lat === 'function' ? latlng.lat() : latlng.y;
-                    const targetLng = typeof latlng.lng === 'function' ? latlng.lng() : latlng.x;
+                    const targetLat = latlng.lat();
+                    const targetLng = latlng.lng();
+                    const dist = getDistanceFromLatLonInKm(center.lat, center.lng, targetLat, targetLng);
 
-                    // Debug: Log coordinates for first item
-                    if (validFacilities.length === 0) {
-                        console.log('🎯 First item coordinates:', {
-                            searchCenterLat: center.lat,
-                            searchCenterLng: center.lng,
-                            facilityLat: targetLat,
-                            facilityLng: targetLng,
-                            title: item.title.replace(/<[^>]*>/g, '')
-                        });
-                    }
-
-                    const distance = getDistanceFromLatLonInKm(
-                        center.lat, center.lng,
-                        targetLat, targetLng
-                    );
-
-                    // Debug log for distance calculation
-                    if (validFacilities.length < 10) {
-                        console.log(`📏 Distance: ${item.title.replace(/<[^>]*>/g, '')} - ${distance.toFixed(2)}km ${distance <= 5 ? '✅' : '❌'}`);
-                    }
-
-                    // Distance check based on effectiveDistance
-                    const maxDist = effectiveDistance;
-                    if (distance <= maxDist) {
-                        validFacilities.push({ ...item, latlng, distance });
+                    if (dist <= effectiveDistance) {
+                        validFacilities.push({ ...item, latlng, distance: dist });
                     }
                 }
             }));
 
-            // Sort by distance (closest first)
             validFacilities.sort((a, b) => a.distance - b.distance);
 
-            console.log(`✅ Found ${validFacilities.length} valid facilities within ${effectiveDistance}km`);
-            if (validFacilities.length > 0) {
-                console.log('🎯 Displaying ALL facilities:', validFacilities.map(f => ({ name: f.title.replace(/<[^>]*>?/gm, ''), distance: f.distance.toFixed(2) + 'km', sport: f.sport })));
-            }
+            console.log(`✅ Deep Scan Complete. Found ${validFacilities.length} valid facilities.`);
 
-            validFacilities.forEach(facility => {
-                // For multi-sport facilities, show the first sport's emoji or a combined one
-                const sports = Array.isArray(facility.sport) ? facility.sport : [facility.sport];
-                const emoji = getSportEmoji(sports[0]);
-                createMarker(facility.latlng, emoji, facility, sports);
-                bounds.extend(facility.latlng);
-                markerCount++;
-            });
+            if (validFacilities.length === 0) {
+                setSearchError(`반경 ${effectiveDistance}km 내에 발견된 시설이 없습니다.`);
+            } else {
+                setSearchError(null); // Clear loading/error message
 
-            console.log(`🗺️ Created ${markerCount} markers on the map`);
-
-            // 4. Fit map to show all markers (only if requested)
-            if (shouldFitBounds && markerCount > 0 && naverMapRef.current) {
-                naverMapRef.current.fitBounds(bounds, {
-                    top: 50, bottom: 50, left: 20, right: 20
+                validFacilities.forEach(facility => {
+                    const sports = Array.isArray(facility.sport) ? facility.sport : [facility.sport];
+                    const emoji = getSportEmoji(sports[0]);
+                    createMarker(facility.latlng, emoji, facility, sports);
+                    bounds.extend(facility.latlng);
+                    markerCount++;
                 });
+
+                if (shouldFitBounds && markerCount > 0 && naverMapRef.current) {
+                    // Fit bounds but with padding
+                    setTimeout(() => {
+                        naverMapRef.current.fitBounds(bounds, {
+                            top: 50, bottom: 50, left: 20, right: 20
+                        });
+                    }, 100);
+                }
             }
 
         } catch (error) {
-            console.error('Failed to load facilities:', error);
-            if (error.response?.status === 401 || error.response?.status === 403) {
-                const guidance = error.response?.data?.guidance;
-                setSearchError(guidance ? `서비스 인증 실패: ${guidance}` : `인증 오류가 발생했습니다.`);
-            } else {
-                setSearchError(`시설을 불러오는 중 오류가 발생했습니다.`);
-            }
+            console.error('Deep scan error:', error);
+            setSearchError(`검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.`);
         } finally {
             setIsSearching(false);
         }
