@@ -231,7 +231,12 @@ function Home({ user }) {
         setSearchError(null);
 
         if (!selectedSports || selectedSports.length === 0) {
-            // Default to popular sports for better initial results
+            // If user is not logged in, do not load default facilities (clean start)
+            if (!user) {
+                setIsSearching(false);
+                return;
+            }
+            // Default to popular sports for better initial results for logged-in users
             selectedSports = ['축구', '농구', '수영', '헬스', '요가', '필라테스', '태권도', '유도'];
         }
 
