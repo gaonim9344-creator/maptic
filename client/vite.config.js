@@ -16,6 +16,6 @@ export default defineConfig({
         outDir: 'dist',
         sourcemap: false
     }
-}
 });
 // Force build cache invalidation
+```
