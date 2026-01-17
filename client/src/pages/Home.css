@@ -113,8 +113,6 @@
     left: 20px;
     width: 44px;
     height: 44px;
-    border-radius: 4px;
-    /* Slightly rounded square like Naver web or 50% for mobile. Let's go with circle for mobile app feel as requested "similar design" which usually implies mobile app utility */
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -122,11 +120,12 @@
     background: white;
     color: #424242;
     /* Dark grey like Naver */
-    z-index: 100;
+    z-index: 9999;
+    /* Force top layer */
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.3);
-    /* Naver-like subtle shadow */
-    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid #e2e8f0;
+    /* Explicit border for contrast */
     transition: all 0.2s ease;
 }
 
