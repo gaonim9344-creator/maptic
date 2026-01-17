@@ -117,15 +117,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: white;
-    color: #424242;
-    /* Dark grey like Naver */
-    z-index: 9999;
-    /* Force top layer */
+    background: #ffffff;
+    color: #000000;
+    z-index: 99999;
+    /* Max z-index */
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    border: 1px solid #e2e8f0;
-    /* Explicit border for contrast */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    /* Stronger shadow */
+    border: 1px solid #999999;
+    /* Much darker border for visibility */
     transition: all 0.2s ease;
 }
 
