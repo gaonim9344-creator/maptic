@@ -110,24 +110,40 @@
 .my-location-btn {
     position: absolute;
     bottom: 30px;
-    left: 30px;
-    width: 48px;
-    height: 48px;
+    left: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 4px;
+    /* Slightly rounded square like Naver web or 50% for mobile. Let's go with circle for mobile app feel as requested "similar design" which usually implies mobile app utility */
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
-    color: #333;
+    color: #424242;
+    /* Dark grey like Naver */
     z-index: 100;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    border: 1px solid #ddd;
-    transition: background 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.3);
+    /* Naver-like subtle shadow */
+    border: none;
+    transition: all 0.2s ease;
 }
 
 .my-location-btn:hover {
-    background: #f4f4f4;
+    background: #fbfbfb;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+    color: #333;
+}
+
+.my-location-btn:active {
+    background: #f0f0f0;
+    transform: translateY(1px);
+}
+
+.my-location-btn svg {
+    width: 20px;
+    height: 20px;
 }
 
 .distance-filter-controls {
