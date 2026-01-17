@@ -235,27 +235,24 @@ function Home({ user }) {
             selectedSports = ['축구', '농구', '수영', '헬스', '요가', '필라테스', '태권도', '유도'];
         }
 
-        console.log('🔍 Deep Scanning started with sports:', selectedSports);
+        console.log('🔍 Deep Scanning (Exhaustive) started with sports:', selectedSports);
         console.log('📍 Search location:', center);
 
         // Notify user of deep scan
-        setSearchError(`🔍 꼼꼼히 검색 중... (반경 ${effectiveDistance}km 내 모든 동 조회)`);
-
+        setSearchError(`🔍 꼼꼼히 검색 중... (반경 ${effectiveDistance}km 내 모든 시설 조회)`);
 
         // Helper to expand keyword into instructional/educational search terms
         const getExpandedKeywords = (sport) => {
             const s = sport.replace(/장$/g, '').replace(/교실$/g, '').trim();
-            // Instructional keywords take priority to find learning facilities
             const learningKeywords = [`${s}교실`, `${s}아카데미`, `${s}클럽`, `${s}학원`, `${s}학교`];
             const baseKeywords = [s, `${s}센터`, `${s}체육관`];
 
-            if (s === '유도') return [`${s}관`, `${s}도장`, `${s}교실`, `${s}아카데미`, `${s}클럽`, '대한유도', '유도장'].filter(Boolean);
-            if (s === '태권도') return [`${s}도장`, `${s}관`, `${s}교실`, `${s}아카데미`, `${s}클럽`].filter(Boolean);
-            if (s === '복싱') return ['복싱짐', '권투', ...learningKeywords].filter(Boolean);
-            if (s === '헬스') return ['피트니스', '휘트니스', ...baseKeywords, 'gx'].filter(Boolean);
-            if (s === '수영') return ['수영장', '강습', ...learningKeywords].filter(Boolean);
+            if (s === '유도') return ['유도', '유도관', '유도장', '대한유도회'].filter(Boolean);
+            if (s === '태권도') return ['태권도', '태권도장', '태권도 학원'].filter(Boolean);
+            if (s === '복싱') return ['복싱', '권투', '복싱짐'].filter(Boolean);
+            if (s === '헬스') return ['헬스', '피트니스', '휘트니스', 'PT'].filter(Boolean);
 
-            return [...learningKeywords, ...baseKeywords].filter(Boolean);
+            return [s, ...baseKeywords].filter(Boolean);
         };
 
         try {
@@ -264,7 +261,6 @@ function Home({ user }) {
             const checkPoints = [];
             const searchBuffer = effectiveDistance * 1.1; // 10% buffer
             const gridIntervalKm = 0.3; // 300m
-            const radiusDeg = searchBuffer * 0.009;
             const steps = Math.ceil(searchBuffer / gridIntervalKm);
 
             const stepLat = gridIntervalKm * 0.009;
@@ -284,10 +280,9 @@ function Home({ user }) {
 
             console.log(`📡 Analyzing ${checkPoints.length} grid points for administrative areas...`);
 
-            // 2. Reverse Geocode Limit Processing (Batching to avoid browser freeze)
-            // Naver JS Geocoder is client-side but still good to batch
+            // 2. Reverse Geocode - Get All Unique Dongs
             const uniqueRegions = new Map();
-            const processBatchSize = 20;
+            const processBatchSize = 25;
 
             for (let i = 0; i < checkPoints.length; i += processBatchSize) {
                 const batch = checkPoints.slice(i, i + processBatchSize);
@@ -303,116 +298,145 @@ function Home({ user }) {
 
             const targetAreas = Array.from(uniqueRegions.values());
             console.log(`🎯 Found ${targetAreas.length} target administrative areas (Dongs):`, targetAreas.map(r => r.area3));
-            setSearchError(`📍 ${targetAreas.length}개 동을 발견했습니다. 정밀 검색을 시작합니다...`);
+            setSearchError(`📍 ${targetAreas.length}개 동 조회 완료. 전수 검색 시작...`);
 
-
-            // 3. Build Detailed Queries: "Area + Sport"
+            // 3. Build Queries
             const finalQueries = [];
 
-            // Add direct user query if exists
+            // A. User Typed Query
             if (searchQuery && searchQuery.length >= 2) {
                 finalQueries.push({ query: searchQuery, sport: '검색' });
             }
 
+            // B. Sport Queries per Dong
             for (const sport of selectedSports) {
                 const keywords = getExpandedKeywords(sport);
+                // Use the primary keyword + Dong
+                const primaryKeyword = keywords[0] || sport;
 
                 for (const area of targetAreas) {
-                    // Create specific location-based queries
-                    // e.g. "서울시 강남구 역삼동 유도"
-                    // Also add simpler one: "역삼동 유도" (Naver handles local context well usually, but full string is safer)
-
-                    // We pick just ONE best query per Dong/Sport combo to avoid explosion, 
-                    // relying on the specific keyword suffixes to match titles.
-                    // Actually, "Yeoksam-dong Judo" covers most. 
-
-                    // Use the most common suffix for the query itself
-                    const suffix = keywords[0] || sport;
                     finalQueries.push({
-                        // Query: "Yeoksam-dong Judo" - very specific
-                        query: `${area.area3} ${sport}`,
+                        query: `${area.area3} ${primaryKeyword}`,
                         sport: sport,
                         area: area.area3
                     });
-                    // Backup: "Gangnam-gu Judo" (for border areas, but we have dense grid so maybe overkill? Let's stick to Dong for precision)
                 }
+
+                // C. Global Fallback (Center-based) - Pass coordinates to API
+                // This catches places that might not match "Dong + Keyword" strictly in text
+                finalQueries.push({
+                    query: sport,
+                    sport: sport,
+                    area: '주변',
+                    useCoords: true
+                });
             }
 
             console.log(`🚀 Executing ${finalQueries.length} deep search queries...`);
 
-            // 4. Execution with rate limiting
+            // 4. Execution with Dynamic Pagination
             const allResults = [];
-            const queryBatchSize = 3; // Conservative batch size for API
+            const queryBatchSize = 4; // Parallel requests
             let completedQueries = 0;
 
             for (let i = 0; i < finalQueries.length; i += queryBatchSize) {
                 const batch = finalQueries.slice(i, i + queryBatchSize);
 
-                // Update progress UI every few batches
-                if (i % 6 === 0) {
+                // Update UI
+                if (i % 8 === 0) {
                     const progress = Math.round((completedQueries / finalQueries.length) * 100);
-                    const processingArea = batch[0]?.area || '주변';
-                    setSearchError(`🔎 ${processingArea} 등 검색 중... (${progress}%)`);
+                    setSearchError(`🔎 ${batch[0]?.area || '주변'} 등 정밀 검색 중... (${progress}%)`);
                 }
 
                 await Promise.all(batch.map(async (task) => {
                     try {
-                        const response = await searchAPI.searchLocal(task.query, center.lat, center.lng, 5); // display 5
-                        const items = response.data.items || [];
-                        allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
+                        let page = 1;
+                        const display = 5; // Max per page
+                        let maxPages = 1; // Will update after first request
 
-                        // We do NOT stop early. We want coverage.
-                        await new Promise(r => setTimeout(r, 100)); // Small delay between calls
+                        // Fetch Loop
+                        while (page <= maxPages) {
+                            const start = (page - 1) * display + 1;
+                            // Naver limit: start > 1000 is invalid.
+                            if (start > 1000) break;
+
+                            const params = {
+                                query: task.query,
+                                display,
+                                start,
+                                sort: 'random' // 'random' gives better coverage than 'sim' sometimes, or 'sim' for relevance. 'random' allows paging deeper? Actually Naver 'local' API is tricky. 'sim' is best.
+                            };
+
+                            // If useCoords is true, pass lat/lng
+                            if (task.useCoords) {
+                                // We pass the CENTER of the search to find things nearby
+                                // Use searchAPI.searchLocal which needs updating or we pass it manually
+                            }
+
+                            // Using our searchAPI wrapper
+                            const response = await searchAPI.searchLocal(
+                                task.query,
+                                task.useCoords ? center.lat : undefined,
+                                task.useCoords ? center.lng : undefined,
+                                start
+                            );
+
+                            const data = response.data;
+                            const items = data.items || [];
+                            const total = data.total || 0;
+
+                            if (items.length > 0) {
+                                allResults.push(...items.map(item => ({ ...item, sport: task.sport })));
+                            }
+
+                            // Dynamic Pagination Logic
+                            if (page === 1 && total > display) {
+                                // Calculate how many pages we really need
+                                // Cap at 40 items (8 pages) per query to prevent insanity
+                                const needed = Math.ceil(total / display);
+                                maxPages = Math.min(needed, 8);
+                            }
+
+                            if (items.length < display) {
+                                break; // End of results
+                            }
+
+                            page++;
+                            await new Promise(r => setTimeout(r, 50)); // Tiny throttle
+                        }
                     } catch (e) {
-                        // Ignore errors to keep going
-                        console.warn(`Query failed: ${task.query}`);
+                        console.warn(`Query failed: ${task.query}`, e.message);
                     }
                 }));
                 completedQueries += batch.length;
             }
 
-            // 5. Post-processing & Filtering
-            setSearchError(`✨ 결과 정리 중...`);
+            // 5. Post-processing
+            setSearchError(`✨ 데이터 정리 및 중복 제거 중...`);
 
-            // Enhanced Junk Filtering 🛑
+            // Deduplication
+            // Key: Clean Title + Address (First 10 chars)
+            const finalResultsMap = new Map();
+
+            // Relaxed filtering
             const excludeKeywords = [
                 '누수', '방수', '설비', '철거', '인테리어', '주차장', '빌라', '원룸', '아파트',
-                '유도등', '비상구', '소방', '화재', '안전', '탐지', '피난', '전문업체', '주방',
-                '매점', '편의점', '식당', '카페', '술집', '병원', '약국', '공인중개사', '부동산'
+                '유도등', '비상구', '소방', '화재', '안전', '탐지', '전문업체', '재활용',
+                '매점', '편의점', '식당', '카페', '술집', '공인중개사'
             ];
 
-            const filteredResults = allResults.filter(item => {
+            for (const item of allResults) {
                 const rawTitle = item.title.replace(/<[^>]*>/g, '');
-                const title = rawTitle.replace(/&amp;/g, '&').toLowerCase();
-                const category = (item.category || '').toLowerCase();
+                const title = rawTitle.replace(/&amp;/g, '&').trim();
+                const address = item.address || '';
 
-                // 1. Strict Exclusions
-                if (excludeKeywords.some(key => title.includes(key) || category.includes(key))) {
-                    return false;
-                }
+                // 1. Basic Junk Filter
+                if (excludeKeywords.some(key => title.includes(key))) continue;
 
-                // 2. Relaxed inclusion: If title has sport name, accept it.
-                // This maximizes "showing everything".
-                const sports = Array.isArray(item.sport) ? item.sport : [item.sport];
-                const hasSportInTitle = sports.some(s => {
-                    const base = s.replace(/장$/, '').replace(/교실$/, '').trim();
-                    return title.includes(base);
-                });
+                // 2. Add to map (merge sports tags)
+                // Use a tighter key: Title + Address
+                const key = `${title}-${address}`;
 
-                if (hasSportInTitle) return true;
-
-                // 3. Fallback to category check
-                const isSportsCategory = category.includes('스포츠') || category.includes('체육') ||
-                    category.includes('학원') || category.includes('강습') ||
-                    category.includes('도장') || category.includes('관');
-
-                return isSportsCategory;
-            });
-
-            // Dedup
-            const finalResultsMap = new Map();
-            filteredResults.forEach(item => {
-                const key = `${item.title.replace(/<[^>]*>/g, '')}-${item.address}`;
                 if (finalResultsMap.has(key)) {
                     const existing = finalResultsMap.get(key);
                     const sports = Array.isArray(existing.sport) ? existing.sport : [existing.sport];
@@ -422,56 +446,59 @@ function Home({ user }) {
                 } else {
                     finalResultsMap.set(key, { ...item, sport: [item.sport] });
                 }
-            });
+            }
 
             const uniqueItems = Array.from(finalResultsMap.values());
+            console.log(`✅ Collected ${uniqueItems.length} unique candidates. Verifying location...`);
 
-            // Geocode & Distance Check
+            // Geocode & Final Distance Check
             const bounds = new window.naver.maps.LatLngBounds();
             let markerCount = 0;
             const validFacilities = [];
 
-            await Promise.all(uniqueItems.map(async (item) => {
-                if (!item.address) return;
+            // Batch geocoding
+            const geocodeBatchSize = 50; // Naver JS client handles this but let's be safe
 
-                let latlng = null;
-                // Try to get coords from item if available (Naver search result usually lacks this, need geocode)
-                // Wait, we need to geocode.
-                try {
-                    const geocodeRes = await new Promise((resolve) => {
-                        window.naver.maps.Service.geocode({ query: item.address }, (status, response) => {
-                            if (status === window.naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
-                                const addr = response.v2.addresses[0];
-                                resolve(new window.naver.maps.LatLng(addr.y, addr.x));
-                            } else {
-                                resolve(null);
-                            }
+            for (let i = 0; i < uniqueItems.length; i += geocodeBatchSize) {
+                const batch = uniqueItems.slice(i, i + geocodeBatchSize);
+
+                await Promise.all(batch.map(async (item) => {
+                    if (!item.address) return;
+
+                    let latlng = null;
+                    try {
+                        const geocodeRes = await new Promise((resolve) => {
+                            window.naver.maps.Service.geocode({ query: item.address }, (status, response) => {
+                                if (status === window.naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
+                                    const addr = response.v2.addresses[0];
+                                    resolve(new window.naver.maps.LatLng(addr.y, addr.x));
+                                } else {
+                                    resolve(null);
+                                }
+                            });
                         });
-                    });
-                    if (geocodeRes) latlng = geocodeRes;
-                } catch (e) {
-                    console.warn('Geocode failed', e);
-                }
-
-                if (latlng) {
-                    const targetLat = latlng.lat();
-                    const targetLng = latlng.lng();
-                    const dist = getDistanceFromLatLonInKm(center.lat, center.lng, targetLat, targetLng);
-
-                    if (dist <= effectiveDistance) {
-                        validFacilities.push({ ...item, latlng, distance: dist });
+                        latlng = geocodeRes;
+                    } catch (e) {
+                        // ignore
                     }
-                }
-            }));
+
+                    if (latlng) {
+                        const dist = getDistanceFromLatLonInKm(center.lat, center.lng, latlng.lat(), latlng.lng());
+                        if (dist <= effectiveDistance) {
+                            validFacilities.push({ ...item, latlng, distance: dist });
+                        }
+                    }
+                }));
+            }
 
             validFacilities.sort((a, b) => a.distance - b.distance);
 
-            console.log(`✅ Deep Scan Complete. Found ${validFacilities.length} valid facilities.`);
+            console.log(`🎉 Found ${validFacilities.length} valid facilities within ${effectiveDistance}km.`);
 
             if (validFacilities.length === 0) {
                 setSearchError(`반경 ${effectiveDistance}km 내에 발견된 시설이 없습니다.`);
             } else {
-                setSearchError(null); // Clear loading/error message
+                setSearchError(null);
 
                 validFacilities.forEach(facility => {
                     const sports = Array.isArray(facility.sport) ? facility.sport : [facility.sport];
@@ -482,7 +509,6 @@ function Home({ user }) {
                 });
 
                 if (shouldFitBounds && markerCount > 0 && naverMapRef.current) {
-                    // Fit bounds but with padding
                     setTimeout(() => {
                         naverMapRef.current.fitBounds(bounds, {
                             top: 50, bottom: 50, left: 20, right: 20
