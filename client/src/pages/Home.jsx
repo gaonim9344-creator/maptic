@@ -256,6 +256,7 @@ function Home({ user }) {
             if (s === '태권도') return ['태권도', '태권도장', '태권도 학원'].filter(Boolean);
             if (s === '복싱') return ['복싱', '권투', '복싱짐'].filter(Boolean);
             if (s === '헬스') return ['헬스', '피트니스', '휘트니스', 'PT'].filter(Boolean);
+            if (s === '스모') return ['스모 도장', '스모 체육관', '스모 교실', '씨름/스모'].filter(Boolean); // Strict keywords for Sumo
 
             return [s, ...baseKeywords].filter(Boolean);
         };
@@ -423,20 +424,31 @@ function Home({ user }) {
             // Key: Clean Title + Address (First 10 chars)
             const finalResultsMap = new Map();
 
-            // Relaxed filtering
+            // Relaxed filtering + Category Filtering
             const excludeKeywords = [
                 '누수', '방수', '설비', '철거', '인테리어', '주차장', '빌라', '원룸', '아파트',
                 '유도등', '비상구', '소방', '화재', '안전', '탐지', '전문업체', '재활용',
-                '매점', '편의점', '식당', '카페', '술집', '공인중개사'
+                '매점', '편의점', '식당', '카페', '술집', '공인중개사',
+                '에이치알', 'HR', '리크루팅', '파견', '돈까스', '스시', '초밥', '스테이크', '구이', '갈비', '뷔페', '횟집'
+            ];
+
+            const excludeCategories = [
+                '음식점', '한식', '일식', '중식', '양식', '분식', '카페', '디저트',
+                '기업', '회사', '금융', '보험', '쇼핑', '유통'
             ];
 
             for (const item of allResults) {
                 const rawTitle = item.title.replace(/<[^>]*>/g, '');
                 const title = rawTitle.replace(/&amp;/g, '&').trim();
                 const address = item.address || '';
+                const category = item.category || '';
 
-                // 1. Basic Junk Filter
+                // 1. Basic Junk Filter (Title)
                 if (excludeKeywords.some(key => title.includes(key))) continue;
+
+                // 2. Category Filter (Strict for ambiguous sports like Sumo)
+                // If it looks like a restaurant or company, skip it
+                if (excludeCategories.some(cat => category.includes(cat))) continue;
 
                 // 2. Add to map (merge sports tags)
                 // Use a tighter key: Title + Address
