@@ -330,8 +330,9 @@ function Home({ user }) {
 
                 // C. Global Fallback (Center-based) - Pass coordinates to API
                 // This catches places that might not match "Dong + Keyword" strictly in text
+                // FIX: Use primaryKeyword (e.g. '스모 도장') instead of raw sport name ('스모') to avoid restaurants
                 finalQueries.push({
-                    query: sport,
+                    query: primaryKeyword,
                     sport: sport,
                     area: '주변',
                     useCoords: true
@@ -434,7 +435,8 @@ function Home({ user }) {
 
             const excludeCategories = [
                 '음식점', '한식', '일식', '중식', '양식', '분식', '카페', '디저트',
-                '기업', '회사', '금융', '보험', '쇼핑', '유통'
+                '기업', '회사', '금융', '보험', '쇼핑', '유통',
+                '이자카야', '요리', '주점', '호프', '바(BAR)', '술집'
             ];
 
             for (const item of allResults) {
