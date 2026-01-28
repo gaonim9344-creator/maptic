@@ -9,6 +9,11 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Profile from './pages/Profile';
 
+// Partner Pages
+import PartnerHome from './pages/PartnerHome';
+import FacilityDashboard from './pages/FacilityDashboard';
+import FacilityForm from './pages/FacilityForm';
+
 // Components
 import NavBar from './components/NavBar';
 
@@ -84,6 +89,21 @@ function App() {
                         element={
                             user ? <Profile user={user} setUser={setUser} onLogout={handleLogout} /> : <Navigate to="/signin" />
                         }
+                    />
+
+                    {/* Partner Routes */}
+                    <Route path="/partner" element={<PartnerHome user={user} />} />
+                    <Route
+                        path="/partner/dashboard"
+                        element={user ? <FacilityDashboard user={user} /> : <Navigate to="/signin" />}
+                    />
+                    <Route
+                        path="/partner/new"
+                        element={user ? <FacilityForm user={user} /> : <Navigate to="/signin" />}
+                    />
+                    <Route
+                        path="/partner/edit/:id"
+                        element={user ? <FacilityForm user={user} /> : <Navigate to="/signin" />}
                     />
                 </Routes>
             </div>

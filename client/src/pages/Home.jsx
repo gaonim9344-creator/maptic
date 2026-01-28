@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { getSportEmoji, SPORTS_LIST } from '../utils/sportsData';
-import { searchAPI } from '../utils/api';
+import { searchAPI, facilityAPI } from '../utils/api';
 import './Home.css';
 
 // Haversine formula to calculate distance between two points
@@ -262,6 +262,22 @@ function Home({ user }) {
         };
 
         try {
+            // 0. Fetch Registered Facilities (Maptic BS) first
+            let registeredFacilities = [];
+            try {
+                const res = await facilityAPI.getAll({});
+                registeredFacilities = res.data.map(f => ({
+                    ...f,
+                    title: `[공식] ${f.name}`, // Add prefix for testing visibility
+                    sport: f.category,
+                    isRegistered: true, // Flag to identify partner facilities
+                    latlng: null // Will be geocoded later if address exists
+                }));
+                console.log(`🏢 Fetched ${registeredFacilities.length} registered facilities.`);
+            } catch (err) {
+                console.warn('Failed to fetch registered facilities', err);
+            }
+
             // 1. Generate Dense Grid to Capture All Administrative Areas (Dongs)
             // Use 300m interval to ensure we don't skip any small Dong
             const checkPoints = [];
@@ -425,6 +441,11 @@ function Home({ user }) {
             // Key: Clean Title + Address (First 10 chars)
             const finalResultsMap = new Map();
 
+            // Add Registered Facilities (Maptic BS) to the pool
+            if (registeredFacilities.length > 0) {
+                allResults.push(...registeredFacilities);
+            }
+
             // Relaxed filtering + Category Filtering
             const excludeKeywords = [
                 '누수', '방수', '설비', '철거', '인테리어', '주차장', '빌라', '원룸', '아파트',
@@ -440,6 +461,13 @@ function Home({ user }) {
             ];
 
             for (const item of allResults) {
+                // Bypass filters for registered facilities
+                if (item.isRegistered) {
+                    const key = `${item.title}-${item.address}`;
+                    finalResultsMap.set(key, { ...item, sport: [item.sport] });
+                    continue;
+                }
+
                 const rawTitle = item.title.replace(/<[^>]*>/g, '');
                 const title = rawTitle.replace(/&amp;/g, '&').trim();
                 const address = item.address || '';
