@@ -651,7 +651,10 @@ function Home({ user }) {
                             <span style="color: #4299e1;">📍</span> <strong>위치:</strong> ${item.address}
                         </p>
                     </div>
-                    <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(item.title.replace(/<[^>]*>?/gm, ''))}" target="_blank" style="display: inline-block; margin-top: 15px; background: #4299e1; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600; text-align: center; transition: background 0.2s;">상세보기 (네이버 검색)</a>
+                    ${item.isRegistered ?
+                    `<a href="/facility/${item.id}" style="display: block; margin-top: 15px; background: #667eea; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 0.9rem; font-weight: 700; text-align: center; transition: background 0.2s; box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);">상세보기 (Maptic)</a>` :
+                    `<a href="https://search.naver.com/search.naver?query=${encodeURIComponent(item.title.replace(/<[^>]*>?/gm, ''))}" target="_blank" style="display: inline-block; margin-top: 15px; background: #4299e1; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600; text-align: center; transition: background 0.2s;">상세보기 (네이버 검색)</a>`
+                }
                 </div>
             `,
             backgroundColor: "transparent",

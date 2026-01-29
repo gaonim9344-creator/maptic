@@ -1,0 +1,134 @@
+.facility-manager {
+  padding: 24px;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.page-header {
+  margin-bottom: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.page-header h2 {
+  color: white !important;
+  margin-bottom: 8px;
+}
+
+.page-description {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  font-size: 14px;
+}
+
+/* ProTable 스타일 커스터마이징 */
+.facility-manager .ant-pro-table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 
+              0 1px 6px -1px rgba(0, 0, 0, 0.02), 
+              0 2px 4px 0 rgba(0, 0, 0, 0.02);
+}
+
+.facility-manager .ant-pro-table-search {
+  background: white;
+  padding: 16px 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.facility-manager .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  color: #333;
+}
+
+.facility-manager .ant-table-tbody > tr:hover > td {
+  background: #f9f9ff;
+}
+
+/* 버튼 스타일 */
+.facility-manager .ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+}
+
+.facility-manager .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+  transform: translateY(-1px);
+}
+
+/* 모달 스타일 */
+.ant-modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ant-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px 24px;
+}
+
+.ant-modal-title {
+  color: white !important;
+}
+
+.ant-modal-close-x {
+  color: white;
+}
+
+/* 입력 필드 스타일 */
+.ant-input,
+.ant-input-number,
+.ant-select-selector,
+.ant-input-textarea textarea {
+  border-radius: 8px !important;
+}
+
+.ant-input:focus,
+.ant-input-number:focus,
+.ant-select-focused .ant-select-selector,
+.ant-input-textarea textarea:focus {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* 체크박스 스타일 */
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+/* 페이지네이션 */
+.ant-pagination-item-active {
+  border-color: #667eea;
+}
+
+.ant-pagination-item-active a {
+  color: #667eea;
+}
+
+/* 카드 스타일 */
+.ant-pro-card {
+  border-radius: 12px;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .facility-manager {
+    padding: 12px;
+  }
+
+  .page-header {
+    padding: 16px;
+  }
+
+  .page-header h2 {
+    font-size: 20px;
+  }
+}

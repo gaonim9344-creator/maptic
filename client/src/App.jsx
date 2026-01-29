@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import PartnerHome from './pages/PartnerHome';
 import FacilityDashboard from './pages/FacilityDashboard';
 import FacilityForm from './pages/FacilityForm';
+import FacilityDetail from './pages/FacilityDetail';
 
 // Components
 import NavBar from './components/NavBar';
@@ -105,6 +106,7 @@ function App() {
                         path="/partner/edit/:id"
                         element={user ? <FacilityForm user={user} /> : <Navigate to="/signin" />}
                     />
+                    <Route path="/facility/:id" element={<FacilityDetail />} />
                 </Routes>
             </div>
         </Router>
