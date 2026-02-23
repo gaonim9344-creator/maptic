@@ -62,6 +62,11 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// Root route for diagnostics
+app.get('/', (req, res) => {
+    res.send('<h1>Maptic API Server</h1><p>The server is running correctly!</p><a href="/api/health">Check Health API</a>');
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../client/dist')));
