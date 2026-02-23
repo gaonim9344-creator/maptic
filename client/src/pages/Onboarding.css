@@ -1,10 +1,11 @@
 .onboarding-page {
-    min-height: calc(100vh - 100px);
+    min-height: calc(100vh - 80px);
     padding: var(--spacing-xl) 0;
+    background: var(--bg-light);
 }
 
 .onboarding-container {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
 }
 
@@ -15,10 +16,8 @@
 .onboarding-title {
     font-size: 2.5rem;
     margin-bottom: var(--spacing-md);
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--primary);
+    font-weight: 800;
 }
 
 .onboarding-subtitle {
@@ -27,11 +26,9 @@
 }
 
 .sports-selection-container {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
+    background: var(--bg-white);
+    border-radius: 20px;
+    padding: var(--spacing-2xl);
     margin-bottom: var(--spacing-xl);
     box-shadow: var(--shadow-lg);
 }
@@ -44,6 +41,7 @@
 .btn-lg {
     padding: 1rem 3rem;
     font-size: 1.125rem;
+    border-radius: 12px;
 }
 
 @media (max-width: 768px) {
