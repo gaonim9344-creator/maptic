@@ -4,6 +4,7 @@ import { authAPI } from './utils/api';
 
 // Pages
 import Home from './pages/Home';
+import MapPage from './pages/MapPage';
 import Onboarding from './pages/Onboarding';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
@@ -61,6 +62,7 @@ function App() {
                 <NavBar user={user} onLogout={handleLogout} />
                 <Routes>
                     <Route path="/" element={<Home user={user} />} />
+                    <Route path="/map" element={<MapPage user={user} />} />
                     <Route
                         path="/onboarding"
                         element={

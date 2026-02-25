@@ -37,4 +37,14 @@ export const searchAPI = {
     searchLocal: (query, lat, lng, start) => api.get('/search', { params: { query, lat, lng, start } })
 };
 
+// Facilities APIs
+export const facilitiesAPI = {
+    getAll: (params) => api.get('/facilities', { params }),
+    getById: (id) => api.get(`/facilities/${id}`),
+    getMy: () => api.get('/facilities/my'),
+    create: (data) => api.post('/facilities', data),
+    update: (id, data) => api.put(`/facilities/${id}`, data),
+    delete: (id) => api.delete(`/facilities/${id}`)
+};
+
 export default api;

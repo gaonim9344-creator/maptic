@@ -47,27 +47,35 @@ router.post('/signup', async (req, res) => {
 router.post('/signin', async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log(`[Auth] Signin attempt for email: ${email}`);
 
         // Validation
         if (!email || !password) {
+            console.warn('[Auth] Signin failed: Missing email or password');
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
         // Find user
+        console.log('[Auth] Finding user in database...');
         const user = await User.findOne({ email });
         if (!user) {
+            console.warn(`[Auth] Signin failed: User not found for email: ${email}`);
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         // Check password
+        console.log('[Auth] Comparing passwords...');
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
+            console.warn(`[Auth] Signin failed: Incorrect password for email: ${email}`);
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         // Generate token
+        console.log('[Auth] Generating token...');
         const token = user.generateAuthToken();
 
+        console.log(`[Auth] Signin successful for: ${email}`);
         res.json({
             user: {
                 _id: user._id,
@@ -77,8 +85,12 @@ router.post('/signin', async (req, res) => {
             token
         });
     } catch (error) {
-        console.error('Signin error:', error);
-        res.status(500).json({ error: 'Error signing in' });
+        console.error('[Auth] Signin error:', error);
+        res.status(500).json({
+            error: 'Error signing in',
+            details: error.message,
+            code: 'AUTH_SERVER_ERROR'
+        });
     }
 });
 
