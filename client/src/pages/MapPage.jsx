@@ -67,8 +67,8 @@ function MapPage({ user }) {
                     return;
                 }
 
-                // Try to get from env, fallback to the one in local .env
-                const clientId = import.meta.env.VITE_NAVER_CLIENT_ID || '8exFo5vqukHyWhMjNTUc';
+                // Try to get from env, fallback to the one provided by user
+                const clientId = import.meta.env.VITE_NAVER_CLIENT_ID || 'qk5p9qijo2';
                 console.log("Initializing Naver Maps with Client ID:", clientId);
 
                 const script = document.createElement('script');
