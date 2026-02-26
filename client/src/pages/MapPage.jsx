@@ -61,40 +61,56 @@ function MapPage({ user }) {
 
     const initMap = (center) => {
         const loadNaverScript = () => {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 if (window.naver && window.naver.maps) {
                     resolve(window.naver.maps);
                     return;
                 }
+
+                // Try to get from env, fallback to hardcoded
+                const clientId = import.meta.env.VITE_NAVER_CLIENT_ID || 'qk5p9qijo2';
+                console.log("Initializing Naver Maps with Client ID:", clientId);
+
                 const script = document.createElement('script');
                 script.type = 'text/javascript';
-                script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=qk5p9qijo2&submodules=geocoder`;
+                script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}&submodules=geocoder`;
                 script.async = true;
+                script.onerror = () => reject(new Error("Failed to load Naver Maps script"));
                 script.onload = () => {
-                    window.naver.maps.onJSContentLoaded = () => resolve(window.naver.maps);
-                    setTimeout(() => resolve(window.naver.maps), 500);
+                    if (window.naver && window.naver.maps) {
+                        window.naver.maps.onJSContentLoaded = () => resolve(window.naver.maps);
+                        setTimeout(() => resolve(window.naver.maps), 500);
+                    } else {
+                        reject(new Error("Naver Maps object not found after script load"));
+                    }
                 };
                 document.head.appendChild(script);
             });
         };
 
-        loadNaverScript().then(() => {
-            const mapOptions = {
-                center: new window.naver.maps.LatLng(center.lat, center.lng),
-                zoom: 14,
-                zoomControl: true
-            };
-            const map = new window.naver.maps.Map(mapRef.current, mapOptions);
-            naverMapRef.current = map;
-            setMapLoaded(true);
-        });
+        loadNaverScript()
+            .then(() => {
+                const mapOptions = {
+                    center: new window.naver.maps.LatLng(center.lat, center.lng),
+                    zoom: 14,
+                    zoomControl: true
+                };
+                const map = new window.naver.maps.Map(mapRef.current, mapOptions);
+                naverMapRef.current = map;
+                setMapLoaded(true);
+            })
+            .catch(err => {
+                console.error("Map initialization failed:", err);
+            });
     };
 
     const loadInternalFacilities = async () => {
         setIsLoading(true);
         try {
+            console.log("Fetching facilities from:", facilitiesAPI.getAll);
             const response = await facilitiesAPI.getAll();
             if (response.data) {
+                console.log(`Successfully fetched ${response.data.length} facilities`);
                 let filteredData = response.data;
 
                 // Use the latest searchQuery state
@@ -109,9 +125,20 @@ function MapPage({ user }) {
 
                 setFacilities(filteredData);
                 updateMarkers(filteredData);
+            } else {
+                console.warn("No data received from facilities API");
             }
         } catch (error) {
             console.error("Failed to load facilities:", error);
+            // More detailed error logging for debugging
+            if (error.response) {
+                console.error("Response data:", error.response.data);
+                console.error("Response status:", error.response.status);
+            } else if (error.request) {
+                console.error("No response received from server. Is the backend running?");
+            } else {
+                console.error("Error setting up request:", error.message);
+            }
         } finally {
             setIsLoading(false);
         }
