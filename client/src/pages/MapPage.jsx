@@ -60,24 +60,17 @@ function MapPage({ user }) {
         }
     }, [mapLoaded, searchQuery]);
 
-    // 4. Handle clicks on InfoWindow content (for navigation)
+    // 4. Global bridge for InfoWindow buttons (Naver Maps often stops event propagation)
     useEffect(() => {
-        const handleInfoWindowClick = (e) => {
-            const btn = e.target.closest('.view-detail-btn');
-            if (btn) {
-                const id = btn.getAttribute('data-id');
-                if (id) {
-                    console.log("Navigating to facility:", id);
-                    navigate(`/facility/${id}`);
-                }
+        window.handleMapDetailClick = (id) => {
+            console.log("Map detail click bridge triggered for id:", id);
+            if (id) {
+                navigate(`/facility/${id}`);
             }
         };
 
-        // Attach to document to ensure clicks on Naver Maps overlays are captured
-        document.addEventListener('click', handleInfoWindowClick);
-
         return () => {
-            document.removeEventListener('click', handleInfoWindowClick);
+            delete window.handleMapDetailClick;
         };
     }, [navigate]);
 
@@ -196,7 +189,7 @@ function MapPage({ user }) {
                                 <p style="margin: 8px 0 12px 0; font-size: 0.95rem; font-weight: bold; color: #3a5af1;">
                                     월 ${facility.price_monthly ? facility.price_monthly.toLocaleString() : '가격문의'}원
                                 </p>
-                                <button class="view-detail-btn" data-id="${facility._id}" style="
+                                <button class="view-detail-btn" onclick="handleMapDetailClick('${facility._id}')" style="
                                     width: 100%;
                                     padding: 10px;
                                     background: #3a5af1;
