@@ -66,20 +66,17 @@ function MapPage({ user }) {
             if (btn) {
                 const id = btn.getAttribute('data-id');
                 if (id) {
+                    console.log("Navigating to facility:", id);
                     navigate(`/facility/${id}`);
                 }
             }
         };
 
-        const mapContainer = mapRef.current;
-        if (mapContainer) {
-            mapContainer.addEventListener('click', handleInfoWindowClick);
-        }
+        // Attach to document to ensure clicks on Naver Maps overlays are captured
+        document.addEventListener('click', handleInfoWindowClick);
 
         return () => {
-            if (mapContainer) {
-                mapContainer.removeEventListener('click', handleInfoWindowClick);
-            }
+            document.removeEventListener('click', handleInfoWindowClick);
         };
     }, [navigate]);
 
