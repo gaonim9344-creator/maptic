@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { facilitiesAPI } from '../utils/api';
+import backArrow from '../assets/back-arrow.png';
 import './MapPage.css';
 
 function MapPage({ user }) {
@@ -231,10 +232,10 @@ function MapPage({ user }) {
         <div className="map-page">
             <header className="map-header">
                 <button className="back-btn" onClick={() => navigate('/')}>
-                    <span className="material-symbols-outlined">arrow_back</span>
+                    <img src={backArrow} alt="뒤로가기" className="back-arrow-img" />
                 </button>
                 <div className="search-bar-container">
-                    <span className="material-symbols-outlined search-icon">search</span>
+                    <span className="search-icon">🔍</span>
                     <input
                         type="text"
                         placeholder="시설 이름이나 지역 검색"
@@ -256,7 +257,7 @@ function MapPage({ user }) {
                     }
                 }}
             >
-                <span className="material-symbols-outlined">my_location</span>
+                <span style={{ fontSize: '1.2rem' }}>📍</span>
             </button>
         </div>
     );
