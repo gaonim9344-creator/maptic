@@ -196,7 +196,7 @@ function Home({ user }) {
                                     <FacilityCard
                                         key={facility._id}
                                         facility={facility}
-                                        onClick={() => navigate(`/map?query=${facility.name}`)}
+                                        onClick={() => navigate(`/facility/${facility._id}`)}
                                     />
                                 ))
                             ) : (

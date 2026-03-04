@@ -52,4 +52,11 @@ export const facilitiesAPI = {
     delete: (id) => api.delete(`/facilities/${id}`)
 };
 
+// Reviews APIs
+export const reviewsAPI = {
+    getByFacility: (facilityId) => api.get(`/reviews/facility/${facilityId}`),
+    create: (data) => api.post('/reviews', data),
+    delete: (id) => api.delete(`/reviews/${id}`)
+};
+
 export default api;

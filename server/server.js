@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const preferencesRoutes = require('./routes/preferences');
 const searchRoutes = require('./routes/search');
 const facilitiesRoutes = require('./routes/facilities');
+const reviewRoutes = require('./routes/reviews');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -58,6 +59,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/facilities', facilitiesRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

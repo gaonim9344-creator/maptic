@@ -32,6 +32,12 @@ const facilitySchema = new mongoose.Schema({
         required: [true, '월 이용권 가격을 입력해주세요'],
         min: [0, '가격은 0 이상이어야 합니다']
     },
+    price_3months: {
+        type: Number,
+        required: [false],
+        min: [0, '가격은 0 이상이어야 합니다'],
+        default: 0
+    },
     price_yearly: {
         type: Number,
         required: [true, '연 이용권 가격을 입력해주세요'],

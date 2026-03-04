@@ -59,6 +59,30 @@ function MapPage({ user }) {
         }
     }, [mapLoaded, searchQuery]);
 
+    // 4. Handle clicks on InfoWindow content (for navigation)
+    useEffect(() => {
+        const handleInfoWindowClick = (e) => {
+            const btn = e.target.closest('.view-detail-btn');
+            if (btn) {
+                const id = btn.getAttribute('data-id');
+                if (id) {
+                    navigate(`/facility/${id}`);
+                }
+            }
+        };
+
+        const mapContainer = mapRef.current;
+        if (mapContainer) {
+            mapContainer.addEventListener('click', handleInfoWindowClick);
+        }
+
+        return () => {
+            if (mapContainer) {
+                mapContainer.removeEventListener('click', handleInfoWindowClick);
+            }
+        };
+    }, [navigate]);
+
     const initMap = (center) => {
         const loadNaverScript = () => {
             return new Promise((resolve, reject) => {
@@ -168,12 +192,24 @@ function MapPage({ user }) {
                     // Add info window
                     const infoWindow = new window.naver.maps.InfoWindow({
                         content: `
-                            <div style="padding: 10px; min-width: 150px;">
-                                <h4 style="margin: 0 0 5px 0;">${facility.name}</h4>
+                            <div class="map-info-window" style="padding: 12px; min-width: 180px;">
+                                <h4 style="margin: 0 0 5px 0; font-size: 1.1rem;">${facility.name}</h4>
                                 <p style="margin: 0; font-size: 0.85rem; color: #666;">${facility.category}</p>
-                                <p style="margin: 5px 0 0 0; font-size: 0.9rem; font-weight: bold; color: var(--primary);">
+                                <p style="margin: 8px 0 12px 0; font-size: 0.95rem; font-weight: bold; color: #3a5af1;">
                                     월 ${facility.price_monthly ? facility.price_monthly.toLocaleString() : '가격문의'}원
                                 </p>
+                                <button class="view-detail-btn" data-id="${facility._id}" style="
+                                    width: 100%;
+                                    padding: 10px;
+                                    background: #3a5af1;
+                                    color: white;
+                                    border: none;
+                                    border-radius: 8px;
+                                    font-size: 0.9rem;
+                                    font-weight: 700;
+                                    cursor: pointer;
+                                    transition: background 0.2s;
+                                ">상세보기</button>
                             </div>
                         `
                     });
