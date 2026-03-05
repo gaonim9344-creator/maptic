@@ -21,7 +21,7 @@ const BannerCard = ({ title, subtitle, bgGradient, linkText, onClick }) => (
 const CategoryItem = ({ icon, label, onClick }) => (
     <div className="category-item" onClick={onClick}>
         <div className="category-icon glass-container">
-            {icon}
+            <span className="material-symbols-outlined icon-size">{icon}</span>
         </div>
         <span className="category-label">{label}</span>
     </div>
@@ -34,7 +34,7 @@ const FacilityCard = ({ facility, onClick }) => (
                 <img src={facility.images[0]} alt={facility.name} />
             ) : (
                 <div className="facility-image-placeholder">
-                    <span>{facility.category === '유도' ? '🥋' : '💪'}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: '#adb5bd' }}>&#xeb43;</span>
                 </div>
             )}
         </div>
@@ -44,7 +44,10 @@ const FacilityCard = ({ facility, onClick }) => (
                 <h4 className="facility-name">{facility.name}</h4>
             </div>
             <div className="facility-details">
-                <span className="facility-address">📍 {facility.address}</span>
+                <span className="facility-address">
+                    <span className="material-symbols-outlined" style={{ fontSize: '0.8rem', verticalAlign: 'middle', marginRight: '2px' }}>&#xe55f;</span>
+                    {facility.address}
+                </span>
             </div>
             <div className="facility-price-tag">
                 <span className="price-label">월</span>
@@ -154,21 +157,26 @@ function Home({ user }) {
                     {/* Category Grid */}
                     <section className="category-section">
                         <div className="category-grid">
-                            <CategoryItem icon="⛳" label="골프" onClick={() => handleCategoryClick('골프')} />
-                            <CategoryItem icon="🏸" label="배드민턴" onClick={() => handleCategoryClick('배드민턴')} />
-                            <CategoryItem icon="🧘‍♀️" label="요가" onClick={() => handleCategoryClick('요가')} />
-                            <CategoryItem icon="🏊‍♂️" label="수영" onClick={() => handleCategoryClick('수영')} />
-                            <CategoryItem icon="🥊" label="복싱" onClick={() => handleCategoryClick('복싱')} />
-                            <CategoryItem icon="🥋" label="주짓수/유도" onClick={() => handleCategoryClick('주짓수')} />
-                            <CategoryItem icon="⚽" label="축구/풋살" onClick={() => handleCategoryClick('축구')} />
-                            <CategoryItem icon="🎾" label="테니스" onClick={() => handleCategoryClick('테니스')} />
+                            <CategoryItem icon="&#xea9c;" label="골프" onClick={() => handleCategoryClick('골프')} />
+                            <CategoryItem icon="&#xeb43;" label="배드민턴" onClick={() => handleCategoryClick('배드민턴')} />
+                            <CategoryItem icon="&#xe922;" label="요가" onClick={() => handleCategoryClick('요가')} />
+                            <CategoryItem icon="&#xeb48;" label="수영" onClick={() => handleCategoryClick('수영')} />
+                            <CategoryItem icon="&#xeb43;" label="복싱" onClick={() => handleCategoryClick('복싱')} />
+                            <CategoryItem icon="&#xeb43;" label="주짓수/유도" onClick={() => handleCategoryClick('주짓수')} />
+                            <CategoryItem icon="&#xea1e;" label="축구/풋살" onClick={() => handleCategoryClick('축구')} />
+                            <CategoryItem icon="&#xea1c;" label="테니스" onClick={() => handleCategoryClick('테니스')} />
                         </div>
                     </section>
 
                     <div style={{ padding: '0 20px', margin: '15px 0' }}>
                         <BannerCard
                             title="주변 운동시설 찾기"
-                            subtitle="내 주변 등록된 시설을 한 눈에 확인하세요 💡"
+                            subtitle={
+                                <>
+                                    내 주변 등록된 시설을 한 눈에 확인하세요
+                                    <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginLeft: '4px' }}>&#xe80e;</span>
+                                </>
+                            }
                             bgGradient="linear-gradient(135deg, #48bb78 0%, #38b2ac 100%)"
                             linkText="지도 보기"
                             onClick={() => navigate('/map')}
@@ -180,8 +188,8 @@ function Home({ user }) {
                         <div className="section-header" style={{ padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
                                 {user?.selectedSports?.length > 0
-                                    ? `선호하시는 '${user.selectedSports[0]}' 시설 🌟`
-                                    : '추천 운동시설 ⭐'}
+                                    ? <span>선호하시는 '{user.selectedSports[0]}' 시설 <span className="material-symbols-outlined" style={{ fontSize: '1rem', verticalAlign: 'middle' }}>&#xe838;</span></span>
+                                    : <span>추천 운동시설 <span className="material-symbols-outlined" style={{ fontSize: '1rem', verticalAlign: 'middle' }}>&#xe838;</span></span>}
                             </h3>
                             <button className="text-btn" onClick={() => navigate('/list')} style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                                 전체보기

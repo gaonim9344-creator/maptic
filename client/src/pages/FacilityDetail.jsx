@@ -175,7 +175,7 @@ const FacilityDetail = ({ user }) => {
                     </button>
                     <span className="nav-title">{facility.name}</span>
                     <button className="share-icon-btn">
-                        <span style={{ fontSize: '1.2rem' }}>📤</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>&#xe80d;</span>
                     </button>
                 </div>
                 <nav className="nav-tabs">
@@ -207,11 +207,15 @@ const FacilityDetail = ({ user }) => {
                             <div className="facility-intro-card">
                                 <div className="main-info">
                                     <div className="badge-row">
-                                        <span className="category-tag">{emoji} {facility.category}</span>
+                                        <span className="category-tag">
+                                            <span className="material-symbols-outlined" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>&#xeb43;</span>
+                                            {facility.category}
+                                        </span>
                                     </div>
                                     <h1>{facility.name}</h1>
                                     <div className="addr-row">
-                                        <span>📍 {facility.address}</span>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '1rem', verticalAlign: 'middle', marginRight: '4px' }}>&#xe55f;</span>
+                                        <span>{facility.address}</span>
                                     </div>
                                 </div>
 
@@ -223,8 +227,8 @@ const FacilityDetail = ({ user }) => {
                                 <div className="feature-grid">
                                     {(facility.features || []).map((f, i) => (
                                         <div key={i} className="feature-item">
-                                            <span className="feature-emoji">
-                                                {f === '주차' ? '🚗' : f === '샤워실' ? '🚿' : f === '운동복' ? '👕' : '⭐'}
+                                            <span className="material-symbols-outlined feature-icon" style={{ fontSize: '1.2rem', color: '#666' }}>
+                                                {f === '주차' ? '&#xe54c;' : f === '샤워실' ? '&#xef3e;' : f === '운동복' ? '&#xf024;' : '&#xe838;'}
                                             </span>
                                             <span>{f}</span>
                                         </div>
@@ -326,7 +330,7 @@ const FacilityDetail = ({ user }) => {
                                 <div className="address-detail">
                                     <span className="address-text">{facility.address}</span>
                                     <p className="addr-row" style={{ justifyContent: 'flex-start' }}>
-                                        <span className="material-icons" style={{ fontSize: '1rem', color: '#888' }}>info</span>
+                                        <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: '#888' }}>&#xe88e;</span>
                                         <span style={{ fontSize: '0.85rem', color: '#888' }}>정확한 위치는 지도를 참고해 주세요.</span>
                                     </p>
                                 </div>

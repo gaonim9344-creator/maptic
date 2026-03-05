@@ -228,7 +228,7 @@ function MapPage({ user }) {
                     <img src={backArrow} alt="뒤로가기" className="back-arrow-img" />
                 </button>
                 <div className="search-bar-container">
-                    <span className="search-icon">🔍</span>
+                    <span className="material-symbols-outlined search-icon" style={{ fontSize: '1.2rem', color: '#adb5bd' }}>&#xe8b6;</span>
                     <input
                         type="text"
                         placeholder="시설 이름이나 지역 검색"
@@ -250,7 +250,7 @@ function MapPage({ user }) {
                     }
                 }}
             >
-                <span style={{ fontSize: '1.2rem' }}>📍</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: '#666' }}>&#xe1b7;</span>
             </button>
         </div>
     );

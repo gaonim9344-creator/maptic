@@ -17,7 +17,7 @@ const FacilityListItem = ({ facility, onClick }) => (
                 <img src={facility.images[0]} alt={facility.name} />
             ) : (
                 <div className="item-image-placeholder">
-                    <span>{facility.category === '유도' ? '🥋' : '💪'}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: '#adb5bd' }}>&#xeb43;</span>
                 </div>
             )}
             <div className="item-badge">{facility.category}</div>
@@ -26,12 +26,15 @@ const FacilityListItem = ({ facility, onClick }) => (
             <div className="item-header">
                 <h3 className="item-name">{facility.name}</h3>
                 <div className="item-rating">
-                    <span className="star">⭐</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: '#ffc107' }}>&#xe838;</span>
                     <span className="score">4.9</span>
                     <span className="review-count">(120+)</span>
                 </div>
             </div>
-            <p className="item-address">📍 {facility.address}</p>
+            <p className="item-address">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginRight: '2px' }}>&#xe55f;</span>
+                {facility.address}
+            </p>
             <div className="item-tags">
                 {(facility.features || []).slice(0, 3).map((f, i) => (
                     <span key={i} className="tag">#{f}</span>
@@ -112,7 +115,7 @@ function FacilityList({ user }) {
                         <img src={backArrow} alt="뒤로가기" />
                     </button>
                     <div className="search-box">
-                        <span className="search-icon">🔍</span>
+                        <span className="material-symbols-outlined search-icon" style={{ fontSize: '1.2rem', color: '#adb5bd' }}>&#xe8b6;</span>
                         <input
                             type="text"
                             placeholder="시설 이름이나 지역 검색"
@@ -159,7 +162,7 @@ function FacilityList({ user }) {
                     </div>
                 ) : (
                     <div className="empty-state">
-                        <div className="empty-icon">🏜️</div>
+                        <div className="material-symbols-outlined" style={{ fontSize: '3rem', color: '#dee2e6', marginBottom: '16px' }}>&#xe92d;</div>
                         <p>검색 결과가 없습니다.</p>
                         <p className="sub-text">다른 검색어 또는 카테고리를 선택해 보세요.</p>
                     </div>
