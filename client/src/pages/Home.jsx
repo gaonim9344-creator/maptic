@@ -120,7 +120,7 @@ function Home({ user }) {
 
     const handleCategoryClick = (sport) => {
         console.log("Navigating to list for:", sport);
-        navigate(`/map?query=${sport}`);
+        navigate(`/list?category=${sport}`);
     };
 
     return (
@@ -138,7 +138,7 @@ function Home({ user }) {
                         <form className="landing-search-form" onSubmit={(e) => {
                             e.preventDefault();
                             const query = e.target.elements.search.value;
-                            navigate(`/map?query=${query}`);
+                            navigate(`/list?query=${query}`);
                         }}>
                             <div className="search-input-wrapper">
                                 <span className="material-symbols-outlined search-icon">🔍</span>
@@ -183,7 +183,7 @@ function Home({ user }) {
                                     ? `선호하시는 '${user.selectedSports[0]}' 시설 🌟`
                                     : '추천 운동시설 ⭐'}
                             </h3>
-                            <button className="text-btn" onClick={() => navigate('/map')} style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            <button className="text-btn" onClick={() => navigate('/list')} style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                                 전체보기
                             </button>
                         </div>

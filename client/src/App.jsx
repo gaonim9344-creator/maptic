@@ -10,6 +10,7 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Profile from './pages/Profile';
 import FacilityDetail from './pages/FacilityDetail';
+import FacilityList from './pages/FacilityList';
 
 // Components
 import NavBar from './components/NavBar';
@@ -65,6 +66,7 @@ function App() {
                     <Route path="/" element={<Home user={user} />} />
                     <Route path="/map" element={<MapPage user={user} />} />
                     <Route path="/facility/:id" element={<FacilityDetail user={user} />} />
+                    <Route path="/list" element={<FacilityList user={user} />} />
                     <Route
                         path="/onboarding"
                         element={
