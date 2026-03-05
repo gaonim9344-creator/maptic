@@ -1,0 +1,58 @@
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65px;
+    background-color: #ffffff;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid #eeeeee;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1000;
+}
+
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+    transition: transform 0.2s;
+}
+
+.nav-icon.active {
+    transform: scale(1.1);
+}
+
+.nav-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #999999;
+}
+
+.nav-label.active {
+    color: #3a5af1;
+    /* Primary color used in the app */
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+
+    /* Adjust for larger screens if necessary, but keep it fixed bottom as requested */
+    .bottom-nav {
+        max-width: 480px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+    }
+}

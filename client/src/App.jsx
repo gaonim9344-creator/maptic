@@ -14,6 +14,7 @@ import FacilityList from './pages/FacilityList';
 
 // Components
 import NavBar from './components/NavBar';
+import BottomNav from './components/BottomNav';
 
 // Styles
 import './styles/index.css';
@@ -92,6 +93,7 @@ function App() {
                         }
                     />
                 </Routes>
+                <BottomNav />
             </div>
         </Router>
     );
