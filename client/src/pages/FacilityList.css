@@ -32,9 +32,9 @@
     align-items: center;
 }
 
-.back-btn-img img {
-    height: 18px;
-    width: auto;
+.back-btn-img span {
+    font-size: 1.5rem;
+    color: #333;
 }
 
 .search-box {

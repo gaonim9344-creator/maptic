@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { facilitiesAPI, reviewsAPI } from '../utils/api';
 import { getSportEmoji } from '../utils/sportsData';
-import backArrow from '../assets/back-arrow.png';
 import './FacilityDetail.css';
 
 const FacilityDetail = ({ user }) => {
@@ -171,7 +170,7 @@ const FacilityDetail = ({ user }) => {
             <header className="detail-nav-header">
                 <div className="nav-top-bar">
                     <button className="back-icon-btn" onClick={() => navigate(-1)}>
-                        <img src={backArrow} alt="뒤로가기" className="back-arrow-img" />
+                        <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <span className="nav-title">{facility.name}</span>
                     <button className="share-icon-btn">

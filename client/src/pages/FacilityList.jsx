@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { facilitiesAPI } from '../utils/api';
-import backArrow from '../assets/back-arrow.png';
 import './FacilityList.css';
 
 const FilterChip = ({ label, active, onClick }) => (
@@ -112,7 +111,7 @@ function FacilityList({ user }) {
             <header className="list-header sticky-header">
                 <div className="header-top">
                     <button className="back-btn-img" onClick={() => navigate('/')}>
-                        <img src={backArrow} alt="뒤로가기" />
+                        <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div className="search-box">
                         <span className="material-symbols-outlined search-icon" style={{ fontSize: '1.2rem', color: '#adb5bd' }}>&#xe8b6;</span>

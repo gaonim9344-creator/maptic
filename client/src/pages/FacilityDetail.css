@@ -35,10 +35,8 @@
     color: #333;
 }
 
-.back-arrow-img {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
+.back-icon-btn span {
+    font-size: 1.5rem;
 }
 
 .nav-title {
