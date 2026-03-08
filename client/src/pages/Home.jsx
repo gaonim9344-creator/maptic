@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { facilitiesAPI } from '../utils/api';
 import './Home.css';
 
+// Import category images
+import golfIcon from '../assets/categories/golf.png';
+import badmintonIcon from '../assets/categories/badminton.png';
+import yogaIcon from '../assets/categories/yoga.png';
+import swimmingIcon from '../assets/categories/swimming.png';
+import boxingIcon from '../assets/categories/boxing.png';
+import martialArtsIcon from '../assets/categories/martial_arts.png';
+
 // Components required for Da-Gym style
 const BannerCard = ({ title, subtitle, bgGradient, linkText, onClick }) => (
     <div className="banner-card" style={{ background: bgGradient }} onClick={onClick}>
@@ -18,10 +26,14 @@ const BannerCard = ({ title, subtitle, bgGradient, linkText, onClick }) => (
     </div>
 );
 
-const CategoryItem = ({ icon, label, onClick }) => (
+const CategoryItem = ({ icon, label, onClick, image }) => (
     <div className="category-item" onClick={onClick}>
         <div className="category-icon glass-container">
-            <span className="material-symbols-outlined icon-size">{icon}</span>
+            {image ? (
+                <img src={image} alt={label} className="category-img" />
+            ) : (
+                <span className="material-symbols-outlined icon-size">{icon}</span>
+            )}
         </div>
         <span className="category-label">{label}</span>
     </div>
@@ -157,12 +169,12 @@ function Home({ user }) {
                     {/* Category Grid */}
                     <section className="category-section">
                         <div className="category-grid">
-                            <CategoryItem icon="&#xea9c;" label="골프" onClick={() => handleCategoryClick('골프')} />
-                            <CategoryItem icon="&#xeb43;" label="배드민턴" onClick={() => handleCategoryClick('배드민턴')} />
-                            <CategoryItem icon="&#xe922;" label="요가" onClick={() => handleCategoryClick('요가')} />
-                            <CategoryItem icon="&#xeb48;" label="수영" onClick={() => handleCategoryClick('수영')} />
-                            <CategoryItem icon="&#xeb43;" label="복싱" onClick={() => handleCategoryClick('복싱')} />
-                            <CategoryItem icon="&#xeb43;" label="주짓수/유도" onClick={() => handleCategoryClick('주짓수')} />
+                            <CategoryItem image={golfIcon} label="골프" onClick={() => handleCategoryClick('골프')} />
+                            <CategoryItem image={badmintonIcon} label="배드민턴" onClick={() => handleCategoryClick('배드민턴')} />
+                            <CategoryItem image={yogaIcon} label="요가" onClick={() => handleCategoryClick('요가')} />
+                            <CategoryItem image={swimmingIcon} label="수영" onClick={() => handleCategoryClick('수영')} />
+                            <CategoryItem image={boxingIcon} label="복싱" onClick={() => handleCategoryClick('복싱')} />
+                            <CategoryItem image={martialArtsIcon} label="주짓수/유도" onClick={() => handleCategoryClick('주짓수')} />
                             <CategoryItem icon="&#xea1e;" label="축구/풋살" onClick={() => handleCategoryClick('축구')} />
                             <CategoryItem icon="&#xea1c;" label="테니스" onClick={() => handleCategoryClick('테니스')} />
                         </div>
