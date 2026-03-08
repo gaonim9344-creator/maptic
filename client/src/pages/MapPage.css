@@ -29,6 +29,10 @@
     justify-content: center;
 }
 
+.back-btn span {
+    font-size: 1.3rem;
+}
+
 .search-bar-container {
     flex: 1;
     background: #f7fafc;
